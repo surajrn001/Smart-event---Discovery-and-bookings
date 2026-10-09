@@ -42,6 +42,7 @@ A complete full-stack web application built using **FastAPI** (Python 3.13) and 
 
 ```
 SmartEvent/
+├── Screenshots/             # Platform walkthrough & UI demo screenshots
 ├── backend/
 │   ├── app/
 │   │   ├── main.py              # FastAPI app instance and router configuration

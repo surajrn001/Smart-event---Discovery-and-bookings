@@ -7,6 +7,7 @@ class UserRegister(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
     password: str = Field(..., min_length=6)
+    role: Optional[str] = "USER"  # USER, ORGANIZER
 
 class UserLogin(BaseModel):
     email: EmailStr
@@ -16,6 +17,7 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: EmailStr
+    role: str
     created_at: datetime
 
     class Config:
@@ -40,9 +42,22 @@ class EventBase(BaseModel):
 class EventCreate(EventBase):
     pass
 
+class EventUpdate(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    category: Optional[str] = None
+    location: Optional[str] = None
+    event_date: Optional[datetime] = None
+    ticket_price: Optional[float] = None
+    total_seats: Optional[int] = None
+    banner_image: Optional[str] = None
+    event_status: Optional[str] = None
+
 class EventResponse(EventBase):
     id: int
+    organizer_id: Optional[int] = None
     available_seats: int
+    event_status: str
     created_at: datetime
 
     class Config:
@@ -74,6 +89,7 @@ class BookingResponse(BaseModel):
     booking_status: str
     created_at: datetime
     event: Optional[EventResponse] = None
+    user: Optional[UserResponse] = None
     tickets: List[TicketResponse] = []
 
     class Config:
@@ -94,3 +110,32 @@ class NotificationResponse(BaseModel):
 
 class NotificationUpdate(BaseModel):
     is_read: bool = True
+
+# --- Analytics Schemas ---
+class OrganizerEventStats(BaseModel):
+    event_id: int
+    title: str
+    category: str
+    event_status: str
+    total_seats: int
+    available_seats: int
+    tickets_sold: int
+    ticket_price: float
+    total_revenue: float
+    booking_count: int
+
+class OrganizerAnalyticsSummary(BaseModel):
+    total_events: int
+    total_tickets_sold: int
+    total_revenue: float
+    total_bookings: int
+    events_stats: List[OrganizerEventStats]
+
+class AdminPlatformOverview(BaseModel):
+    total_users: int
+    total_organizers: int
+    total_events: int
+    total_tickets_sold: int
+    total_bookings: int
+    total_revenue: float
+    active_events: int

@@ -13,6 +13,16 @@ import { ConfirmationPage } from './pages/ConfirmationPage';
 import { BookingHistoryPage } from './pages/BookingHistoryPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 
+// Organizer Pages
+import { ManageEventsPage } from './pages/organizer/ManageEventsPage';
+import { CreateEventPage } from './pages/organizer/CreateEventPage';
+import { EditEventPage } from './pages/organizer/EditEventPage';
+import { EventBookingsPage } from './pages/organizer/EventBookingsPage';
+import { OrganizerAnalyticsPage } from './pages/organizer/OrganizerAnalyticsPage';
+
+// Admin Pages
+import { AdminDashboardPage } from './pages/admin/AdminDashboardPage';
+
 function App() {
   return (
     <BrowserRouter>
@@ -54,6 +64,58 @@ function App() {
                   }
                 />
 
+                {/* Organizer Protected Routes */}
+                <Route
+                  path="/organizer/events"
+                  element={
+                    <ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}>
+                      <ManageEventsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/organizer/events/new"
+                  element={
+                    <ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}>
+                      <CreateEventPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/organizer/events/:id/edit"
+                  element={
+                    <ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}>
+                      <EditEventPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/organizer/events/:id/bookings"
+                  element={
+                    <ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}>
+                      <EventBookingsPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/organizer/analytics"
+                  element={
+                    <ProtectedRoute allowedRoles={['ORGANIZER', 'ADMIN']}>
+                      <OrganizerAnalyticsPage />
+                    </ProtectedRoute>
+                  }
+                />
+
+                {/* Admin Protected Routes */}
+                <Route
+                  path="/admin/dashboard"
+                  element={
+                    <ProtectedRoute allowedRoles={['ADMIN']}>
+                      <AdminDashboardPage />
+                    </ProtectedRoute>
+                  }
+                />
+
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
@@ -67,7 +129,7 @@ function App() {
               fontSize: '13px',
               marginTop: 'auto',
             }}>
-              <p>SmartEvent Project - Event Discovery & Booking System</p>
+              <p>SmartEvent Platform – Event Discovery, Organizer Management & Admin Analytics</p>
             </footer>
           </div>
         </NotificationProvider>

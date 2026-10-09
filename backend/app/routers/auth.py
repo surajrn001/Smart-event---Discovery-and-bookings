@@ -22,16 +22,20 @@ def register(user_in: UserRegister, db: Session = Depends(get_db)):
             detail="Username is already taken"
         )
 
+    # Sanitize role (only USER or ORGANIZER can self-register, ADMIN is pre-seeded)
+    role_to_set = "ORGANIZER" if user_in.role and user_in.role.upper() == "ORGANIZER" else "USER"
+
     user = User(
         username=user_in.username,
         email=user_in.email,
-        hashed_password=hash_password(user_in.password)
+        hashed_password=hash_password(user_in.password),
+        role=role_to_set
     )
     db.add(user)
     db.commit()
     db.refresh(user)
 
-    token = create_access_token(data={"sub": str(user.id), "email": user.email})
+    token = create_access_token(data={"sub": str(user.id), "email": user.email, "role": user.role})
     return {
         "access_token": token,
         "token_type": "bearer",
@@ -48,7 +52,7 @@ def login(user_in: UserLogin, db: Session = Depends(get_db)):
             headers={"WWW-Authenticate": "Bearer"},
         )
 
-    token = create_access_token(data={"sub": str(user.id), "email": user.email})
+    token = create_access_token(data={"sub": str(user.id), "email": user.email, "role": user.role})
     return {
         "access_token": token,
         "token_type": "bearer",

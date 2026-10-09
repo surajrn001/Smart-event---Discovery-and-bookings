@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 // API base URL pointing to the FastAPI backend
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+const API_BASE_URL = 'http://127.0.0.1:8001/api';
 
 const api = axios.create({
   baseURL: API_BASE_URL,
@@ -27,10 +27,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Clear token if expired or invalid
       localStorage.removeItem('smartevent_token');
       localStorage.removeItem('smartevent_user');
-      // Dispatch custom event to sync with state without hard reload
       window.dispatchEvent(new Event('auth_logout'));
     }
     return Promise.reject(error);
@@ -66,6 +64,27 @@ export const notificationsApi = {
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markAsRead: (id) => api.patch(`/notifications/${id}/read`),
   markAllAsRead: () => api.post('/notifications/read-all'),
+};
+
+// --- Organizer API endpoints ---
+export const organizerApi = {
+  getEvents: () => api.get('/organizer/events'),
+  getEventDetail: (id) => api.get(`/organizer/events/${id}`),
+  createEvent: (data) => api.post('/organizer/events', data),
+  updateEvent: (id, data) => api.put(`/organizer/events/${id}`, data),
+  cancelEvent: (id) => api.patch(`/organizer/events/${id}/cancel`),
+  getEventBookings: (id) => api.get(`/organizer/events/${id}/bookings`),
+  getAnalytics: () => api.get('/organizer/analytics'),
+};
+
+// --- Admin API endpoints ---
+export const adminApi = {
+  getOverview: () => api.get('/admin/overview'),
+  getSalesTrends: () => api.get('/admin/analytics/sales-trends'),
+  getPopularEvents: () => api.get('/admin/analytics/popular-events'),
+  getAllUsers: () => api.get('/admin/users'),
+  getAllEvents: () => api.get('/admin/events'),
+  getAllBookings: () => api.get('/admin/bookings'),
 };
 
 export default api;

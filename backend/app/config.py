@@ -6,7 +6,7 @@ class Settings(BaseSettings):
     PROJECT_NAME: str = "SmartEvent API"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api"
-    SECRET_KEY: str = "smartevent-super-secure-jwt-secret-key-2026-production"
+    SECRET_KEY: str = "smartevent_jwt_secret_key_2026"
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24 hours
     DATABASE_URL: str = "sqlite:///./smartevent.db"

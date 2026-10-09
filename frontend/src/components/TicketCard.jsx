@@ -3,7 +3,7 @@ import { Download, Calendar, MapPin, CheckCircle } from 'lucide-react';
 
 export const TicketCard = ({ ticket, event, booking }) => {
   const qrImageSrc = ticket.qr_code_url
-    ? `http://127.0.0.1:8000${ticket.qr_code_url}`
+    ? `http://127.0.0.1:8001${ticket.qr_code_url}`
     : null;
 
   const eventDate = event?.event_date

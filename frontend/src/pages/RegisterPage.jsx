@@ -6,6 +6,7 @@ export const RegisterPage = () => {
   const [username, setUsername] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [role, setRole] = useState('USER');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register } = useAuth();
@@ -21,11 +22,15 @@ export const RegisterPage = () => {
     }
 
     setLoading(true);
-    const res = await register(username, email, password);
+    const res = await register(username, email, password, role);
     setLoading(false);
 
     if (res.success) {
-      navigate('/');
+      if (res.user?.role === 'ORGANIZER') {
+        navigate('/organizer/events');
+      } else {
+        navigate('/');
+      }
     } else {
       setError(res.error || 'Registration failed. Try with different email.');
     }
@@ -33,12 +38,12 @@ export const RegisterPage = () => {
 
   return (
     <div className="container" style={{ padding: '60px 16px', display: 'flex', justifyContent: 'center' }}>
-      <div className="simple-card" style={{ width: '100%', maxWidth: '380px', padding: '24px' }}>
+      <div className="simple-card" style={{ width: '100%', maxWidth: '400px', padding: '24px' }}>
         <h2 style={{ fontSize: '20px', color: '#111827', marginBottom: '8px', textAlign: 'center' }}>
           Create New Account
         </h2>
         <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px', textAlign: 'center' }}>
-          Fill in details to create your account
+          Fill in details to register on SmartEvent
         </p>
 
         {error && (
@@ -48,6 +53,21 @@ export const RegisterPage = () => {
         )}
 
         <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '4px' }}>
+              Account Type / Role:
+            </label>
+            <select
+              value={role}
+              onChange={(e) => setRole(e.target.value)}
+              className="input-field"
+              style={{ cursor: 'pointer' }}
+            >
+              <option value="USER">Standard User (Explore & Book Tickets)</option>
+              <option value="ORGANIZER">Event Organizer (Publish & Manage Events)</option>
+            </select>
+          </div>
+
           <div>
             <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '4px' }}>
               Username:
@@ -100,7 +120,7 @@ export const RegisterPage = () => {
             className="btn-primary"
             style={{ marginTop: '8px', width: '100%', padding: '10px' }}
           >
-            {loading ? 'Creating account...' : 'Register'}
+            {loading ? 'Creating account...' : `Register as ${role === 'ORGANIZER' ? 'Organizer' : 'User'}`}
           </button>
         </form>
 

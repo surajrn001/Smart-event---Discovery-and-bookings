@@ -5,7 +5,7 @@ import os
 
 from app.config import settings
 from app.database import engine, Base, SessionLocal
-from app.routers import auth, events, bookings, tickets, notifications
+from app.routers import auth, events, bookings, tickets, notifications, organizer, admin
 from app.seed import seed_events_if_empty
 
 # Create all database tables
@@ -18,7 +18,7 @@ with SessionLocal() as db:
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="SmartEvent – Event Discovery and Digital Ticket Booking API"
+    description="SmartEvent – Multi-Role Event Discovery, Organizer Management & Admin Analytics API"
 )
 
 # Configure CORS for Vite React frontend
@@ -41,6 +41,8 @@ app.include_router(events.router, prefix=settings.API_V1_STR)
 app.include_router(bookings.router, prefix=settings.API_V1_STR)
 app.include_router(tickets.router, prefix=settings.API_V1_STR)
 app.include_router(notifications.router, prefix=settings.API_V1_STR)
+app.include_router(organizer.router, prefix=settings.API_V1_STR)
+app.include_router(admin.router, prefix=settings.API_V1_STR)
 
 @app.get("/")
 def root():

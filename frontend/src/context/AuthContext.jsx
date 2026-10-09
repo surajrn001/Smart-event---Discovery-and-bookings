@@ -42,10 +42,10 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (username, email, password) => {
+  const register = async (username, email, password, role = 'USER') => {
     setLoading(true);
     try {
-      const response = await authApi.register({ username, email, password });
+      const response = await authApi.register({ username, email, password, role });
       const { access_token, user: userData } = response.data;
       localStorage.setItem('smartevent_token', access_token);
       localStorage.setItem('smartevent_user', JSON.stringify(userData));
@@ -72,6 +72,9 @@ export const AuthProvider = ({ children }) => {
       value={{
         user,
         token,
+        role: user?.role || 'USER',
+        isOrganizer: user?.role === 'ORGANIZER' || user?.role === 'ADMIN',
+        isAdmin: user?.role === 'ADMIN',
         isAuthenticated: !!token,
         loading,
         login,

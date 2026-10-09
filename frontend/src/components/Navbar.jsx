@@ -2,10 +2,10 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
-import { Bell, Calendar, Ticket, LogOut } from 'lucide-react';
+import { Bell, Calendar, Ticket, LogOut, LayoutDashboard, Shield, PlusCircle } from 'lucide-react';
 
 export const Navbar = () => {
-  const { user, isAuthenticated, logout } = useAuth();
+  const { user, isAuthenticated, isOrganizer, isAdmin, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
@@ -61,9 +61,48 @@ export const Navbar = () => {
             <Calendar size={15} /> Events
           </Link>
 
+          {/* User Links */}
           {isAuthenticated && (
             <Link to="/history" style={{ fontSize: '14px', color: '#374151', display: 'flex', alignItems: 'center', gap: '4px' }}>
               <Ticket size={15} /> My Bookings
+            </Link>
+          )}
+
+          {/* Organizer Links */}
+          {isOrganizer && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+              <Link
+                to="/organizer/events"
+                style={{ fontSize: '14px', color: '#0369a1', fontWeight: '500', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <LayoutDashboard size={15} /> Organizer Hub
+              </Link>
+              <Link
+                to="/organizer/events/new"
+                style={{ fontSize: '13px', color: '#0369a1', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <PlusCircle size={14} /> New Event
+              </Link>
+            </div>
+          )}
+
+          {/* Admin Portal Link */}
+          {isAdmin && (
+            <Link
+              to="/admin/dashboard"
+              style={{
+                fontSize: '14px',
+                color: '#7e22ce',
+                fontWeight: '600',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '4px',
+                background: '#f3e8ff',
+                padding: '4px 8px',
+                borderRadius: '4px',
+              }}
+            >
+              <Shield size={14} /> Admin Portal
             </Link>
           )}
 
@@ -163,10 +202,23 @@ export const Navbar = () => {
                 )}
               </div>
 
-              {/* User display & logout */}
-              <span style={{ fontSize: '14px', color: '#111827', fontWeight: '500' }}>
-                Hi, {user?.username}
-              </span>
+              {/* User badge with role */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <span style={{ fontSize: '14px', color: '#111827', fontWeight: '500' }}>
+                  {user?.username}
+                </span>
+                <span style={{
+                  fontSize: '10px',
+                  fontWeight: 'bold',
+                  padding: '2px 6px',
+                  borderRadius: '4px',
+                  background: user?.role === 'ADMIN' ? '#f3e8ff' : user?.role === 'ORGANIZER' ? '#e0f2fe' : '#f3f4f6',
+                  color: user?.role === 'ADMIN' ? '#7e22ce' : user?.role === 'ORGANIZER' ? '#0369a1' : '#4b5563',
+                  textTransform: 'uppercase',
+                }}>
+                  {user?.role || 'USER'}
+                </span>
+              </div>
 
               <button
                 onClick={handleLogout}

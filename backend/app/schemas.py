@@ -59,6 +59,8 @@ class EventResponse(EventBase):
     available_seats: int
     event_status: str
     created_at: datetime
+    average_rating: Optional[float] = 0.0
+    total_reviews: Optional[int] = 0
 
     class Config:
         from_attributes = True
@@ -75,10 +77,67 @@ class TicketResponse(BaseModel):
     class Config:
         from_attributes = True
 
+# --- Payment Schemas ---
+class PaymentCreate(BaseModel):
+    booking_id: int
+    payment_method: str = "CARD"  # CARD, UPI, NETBANKING, SIMULATED
+    simulate_status: Optional[str] = "SUCCESS"  # SUCCESS, FAILED
+    card_number: Optional[str] = None
+    upi_id: Optional[str] = None
+
+class PaymentResponse(BaseModel):
+    id: int
+    booking_id: int
+    payment_method: str
+    payment_status: str
+    transaction_id: str
+    amount: float
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# --- Coupon Schemas ---
+class CouponBase(BaseModel):
+    coupon_code: str
+    discount_type: str = "PERCENTAGE"  # PERCENTAGE or FIXED
+    discount_value: float
+    minimum_booking_amount: float = 0.0
+    expiry_date: Optional[datetime] = None
+    usage_limit: int = 100
+    is_active: bool = True
+
+class CouponCreate(CouponBase):
+    pass
+
+class CouponResponse(CouponBase):
+    id: int
+    used_count: int
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+class CouponValidateRequest(BaseModel):
+    coupon_code: str
+    booking_amount: float
+
+class CouponValidateResponse(BaseModel):
+    valid: bool
+    coupon_code: str
+    discount_type: str
+    discount_value: float
+    discount_amount: float
+    final_amount: float
+    message: str
+
 # --- Booking Schemas ---
 class BookingCreate(BaseModel):
     event_id: int
     ticket_quantity: int = Field(..., ge=1, le=10)
+    coupon_code: Optional[str] = None
+    payment_method: Optional[str] = "CARD"
+    simulate_status: Optional[str] = "SUCCESS"
 
 class BookingResponse(BaseModel):
     id: int
@@ -86,14 +145,45 @@ class BookingResponse(BaseModel):
     event_id: int
     ticket_quantity: int
     total_price: float
+    coupon_id: Optional[int] = None
+    discount_amount: float = 0.0
+    final_amount: Optional[float] = None
     booking_status: str
     created_at: datetime
     event: Optional[EventResponse] = None
     user: Optional[UserResponse] = None
     tickets: List[TicketResponse] = []
+    payment: Optional[PaymentResponse] = None
 
     class Config:
         from_attributes = True
+
+# --- Review Schemas ---
+class ReviewCreate(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    review_text: str = Field(..., min_length=2, max_length=1000)
+
+class ReviewUpdate(BaseModel):
+    rating: Optional[int] = Field(None, ge=1, le=5)
+    review_text: Optional[str] = Field(None, min_length=2, max_length=1000)
+
+class ReviewResponse(BaseModel):
+    id: int
+    user_id: int
+    event_id: int
+    rating: int
+    review_text: str
+    created_at: datetime
+    username: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+class EventReviewsSummary(BaseModel):
+    event_id: int
+    average_rating: float
+    total_reviews: int
+    reviews: List[ReviewResponse]
 
 # --- Notification Schemas ---
 class NotificationResponse(BaseModel):

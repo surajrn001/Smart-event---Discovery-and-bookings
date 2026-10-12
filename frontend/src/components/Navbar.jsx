@@ -2,7 +2,19 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useNotifications } from '../context/NotificationContext';
-import { Bell, Calendar, Ticket, LogOut, LayoutDashboard, Shield, PlusCircle } from 'lucide-react';
+import {
+  Bell,
+  Calendar,
+  Ticket,
+  LogOut,
+  LayoutDashboard,
+  Shield,
+  PlusCircle,
+  CreditCard,
+  CheckCircle,
+  AlertCircle,
+  ArrowRight
+} from 'lucide-react';
 
 export const Navbar = () => {
   const { user, isAuthenticated, isOrganizer, isAdmin, logout } = useAuth();
@@ -27,11 +39,26 @@ export const Navbar = () => {
     navigate('/login');
   };
 
+  const getNotifIcon = (type) => {
+    switch (type) {
+      case 'PAYMENT':
+        return <CreditCard size={14} color="#16a34a" />;
+      case 'BOOKING':
+        return <Ticket size={14} color="#2563eb" />;
+      default:
+        return <Calendar size={14} color="#f59e0b" />;
+    }
+  };
+
   return (
     <nav style={{
       backgroundColor: '#ffffff',
       borderBottom: '1px solid #e5e7eb',
       padding: '12px 16px',
+      position: 'sticky',
+      top: 0,
+      zIndex: 100,
+      boxShadow: '0 2px 4px rgba(0,0,0,0.03)'
     }}>
       <div className="container" style={{
         display: 'flex',
@@ -41,16 +68,17 @@ export const Navbar = () => {
         {/* Project Title / Logo */}
         <Link to="/" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <span style={{
-            background: '#2563eb',
+            background: 'linear-gradient(135deg, #2563eb, #1d4ed8)',
             color: '#ffffff',
             padding: '4px 8px',
-            borderRadius: '4px',
+            borderRadius: '6px',
             fontWeight: 'bold',
-            fontSize: '14px'
+            fontSize: '14px',
+            letterSpacing: '0.5px'
           }}>
             SE
           </span>
-          <span style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827' }}>
+          <span style={{ fontSize: '19px', fontWeight: 'bold', color: '#111827' }}>
             SmartEvent
           </span>
         </Link>
@@ -98,8 +126,8 @@ export const Navbar = () => {
                 alignItems: 'center',
                 gap: '4px',
                 background: '#f3e8ff',
-                padding: '4px 8px',
-                borderRadius: '4px',
+                padding: '4px 10px',
+                borderRadius: '6px',
               }}
             >
               <Shield size={14} /> Admin Portal
@@ -108,7 +136,7 @@ export const Navbar = () => {
 
           {isAuthenticated ? (
             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-              {/* Notification icon */}
+              {/* Notification icon & interactive dropdown */}
               <div ref={dropdownRef} style={{ position: 'relative' }}>
                 <button
                   id="notification-bell-btn"
@@ -136,7 +164,7 @@ export const Navbar = () => {
                       right: '-4px',
                       background: '#ef4444',
                       color: '#ffffff',
-                      fontSize: '11px',
+                      fontSize: '10px',
                       fontWeight: 'bold',
                       borderRadius: '50%',
                       width: '16px',
@@ -150,23 +178,24 @@ export const Navbar = () => {
                   )}
                 </button>
 
-                {/* Dropdown */}
+                {/* Dropdown Panel */}
                 {showDropdown && (
                   <div className="simple-card" style={{
                     position: 'absolute',
-                    top: '42px',
+                    top: '44px',
                     right: 0,
-                    width: '300px',
-                    padding: '12px',
+                    width: '320px',
+                    padding: '14px',
                     zIndex: 100,
-                    boxShadow: '0 4px 12px rgba(0,0,0,0.1)',
+                    boxShadow: '0 8px 24px rgba(0,0,0,0.12)',
+                    borderRadius: '8px'
                   }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', borderBottom: '1px solid #e5e7eb', paddingBottom: '6px' }}>
-                      <strong style={{ fontSize: '13px' }}>Notifications</strong>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px', borderBottom: '1px solid #e5e7eb', paddingBottom: '8px' }}>
+                      <strong style={{ fontSize: '14px', color: '#111827' }}>Notifications</strong>
                       {unreadCount > 0 && (
                         <button
                           onClick={markAllAsRead}
-                          style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '11px', cursor: 'pointer' }}
+                          style={{ background: 'none', border: 'none', color: '#2563eb', fontSize: '12px', cursor: 'pointer', fontWeight: '500' }}
                         >
                           Mark all read
                         </button>
@@ -174,30 +203,46 @@ export const Navbar = () => {
                     </div>
 
                     {notifications.length === 0 ? (
-                      <p style={{ fontSize: '12px', color: '#6b7280', textAlign: 'center', padding: '12px 0' }}>
-                        No new notifications
+                      <p style={{ fontSize: '13px', color: '#6b7280', textAlign: 'center', padding: '16px 0' }}>
+                        No notifications yet
                       </p>
                     ) : (
-                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                        {notifications.slice(0, 4).map((n) => (
+                      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '280px', overflowY: 'auto' }}>
+                        {notifications.slice(0, 5).map((n) => (
                           <div
                             key={n.id}
                             onClick={() => !n.is_read && markAsRead(n.id)}
                             style={{
-                              padding: '8px',
-                              borderRadius: '4px',
+                              padding: '10px',
+                              borderRadius: '6px',
                               background: n.is_read ? '#ffffff' : '#f0fdf4',
                               border: '1px solid #e5e7eb',
                               fontSize: '12px',
                               cursor: 'pointer',
+                              display: 'flex',
+                              gap: '8px',
+                              alignItems: 'flex-start'
                             }}
                           >
-                            <div style={{ fontWeight: '600' }}>{n.title}</div>
-                            <div style={{ color: '#4b5563', marginTop: '2px' }}>{n.message}</div>
+                            <div style={{ marginTop: '2px' }}>{getNotifIcon(n.type)}</div>
+                            <div style={{ flex: 1 }}>
+                              <div style={{ fontWeight: '600', color: '#111827' }}>{n.title}</div>
+                              <div style={{ color: '#4b5563', marginTop: '2px', lineHeight: '1.4' }}>{n.message}</div>
+                            </div>
                           </div>
                         ))}
                       </div>
                     )}
+
+                    <div style={{ borderTop: '1px solid #e5e7eb', marginTop: '10px', paddingTop: '8px', textAlign: 'center' }}>
+                      <Link
+                        to="/notifications"
+                        onClick={() => setShowDropdown(false)}
+                        style={{ fontSize: '12px', color: '#2563eb', fontWeight: '500', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                      >
+                        View all in Notification Center <ArrowRight size={12} />
+                      </Link>
+                    </div>
                   </div>
                 )}
               </div>

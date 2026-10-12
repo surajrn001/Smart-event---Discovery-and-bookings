@@ -9,7 +9,8 @@ import { HomePage } from './pages/HomePage';
 import { EventDetailPage } from './pages/EventDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { ConfirmationPage } from './pages/ConfirmationPage';
+import { PaymentCheckoutPage } from './pages/PaymentCheckoutPage';
+import { PaymentConfirmationPage } from './pages/PaymentConfirmationPage';
 import { BookingHistoryPage } from './pages/BookingHistoryPage';
 import { NotificationsPage } from './pages/NotificationsPage';
 
@@ -38,12 +39,28 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
 
-                {/* User Protected Pages */}
+                {/* User Protected Booking & Payment Pages */}
+                <Route
+                  path="/checkout/:id"
+                  element={
+                    <ProtectedRoute>
+                      <PaymentCheckoutPage />
+                    </ProtectedRoute>
+                  }
+                />
+                <Route
+                  path="/payment-confirmation/:id"
+                  element={
+                    <ProtectedRoute>
+                      <PaymentConfirmationPage />
+                    </ProtectedRoute>
+                  }
+                />
                 <Route
                   path="/confirmation"
                   element={
                     <ProtectedRoute>
-                      <ConfirmationPage />
+                      <PaymentConfirmationPage />
                     </ProtectedRoute>
                   }
                 />
@@ -116,21 +133,10 @@ function App() {
                   }
                 />
 
+                {/* Catch-all Redirect */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
-
-            <footer style={{
-              background: '#ffffff',
-              borderTop: '1px solid #e5e7eb',
-              padding: '16px',
-              textAlign: 'center',
-              color: '#6b7280',
-              fontSize: '13px',
-              marginTop: 'auto',
-            }}>
-              <p>SmartEvent Platform – Event Discovery, Organizer Management & Admin Analytics</p>
-            </footer>
           </div>
         </NotificationProvider>
       </AuthProvider>

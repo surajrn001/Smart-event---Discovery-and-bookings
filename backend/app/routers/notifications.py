@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
-from typing import List
+from typing import List, Optional
 from app.database import get_db
 from app.models import User, Notification
 from app.schemas import NotificationResponse, NotificationUpdate
@@ -10,15 +10,16 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 @router.get("", response_model=List[NotificationResponse])
 def get_user_notifications(
+    type: Optional[str] = Query(None, description="Filter by notification_type: EVENT, BOOKING, PAYMENT, SYSTEM"),
+    limit: Optional[int] = Query(50, description="Max notifications to retrieve"),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    notifications = (
-        db.query(Notification)
-        .filter(Notification.user_id == current_user.id)
-        .order_by(Notification.created_at.desc())
-        .all()
-    )
+    query = db.query(Notification).filter(Notification.user_id == current_user.id)
+    if type and type.upper() != "ALL":
+        query = query.filter(Notification.type == type.upper())
+    
+    notifications = query.order_by(Notification.created_at.desc()).limit(limit).all()
     return notifications
 
 @router.get("/unread-count")

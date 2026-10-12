@@ -53,6 +53,26 @@ export const bookingsApi = {
   getBookingDetail: (id) => api.get(`/bookings/${id}`),
 };
 
+export const paymentsApi = {
+  processPayment: (data) => api.post('/payments/process', data),
+  getPayment: (id) => api.get(`/payments/${id}`),
+  getBookingPayment: (bookingId) => api.get(`/payments/booking/${bookingId}`),
+};
+
+export const couponsApi = {
+  getActiveCoupons: () => api.get('/coupons'),
+  validateCoupon: (coupon_code, booking_amount) =>
+    api.post('/coupons/validate', { coupon_code, booking_amount }),
+  createCoupon: (data) => api.post('/coupons', data),
+};
+
+export const reviewsApi = {
+  getEventReviews: (eventId) => api.get(`/events/${eventId}/reviews`),
+  submitReview: (eventId, data) => api.post(`/events/${eventId}/reviews`, data),
+  updateReview: (id, data) => api.put(`/reviews/${id}`, data),
+  deleteReview: (id) => api.delete(`/reviews/${id}`),
+};
+
 export const ticketsApi = {
   getUserTickets: () => api.get('/tickets'),
   verifyTicket: (code) => api.get(`/tickets/verify/${code}`),
@@ -60,7 +80,7 @@ export const ticketsApi = {
 };
 
 export const notificationsApi = {
-  getUserNotifications: () => api.get('/notifications'),
+  getUserNotifications: (params) => api.get('/notifications', { params }),
   getUnreadCount: () => api.get('/notifications/unread-count'),
   markAsRead: (id) => api.patch(`/notifications/${id}/read`),
   markAllAsRead: () => api.post('/notifications/read-all'),

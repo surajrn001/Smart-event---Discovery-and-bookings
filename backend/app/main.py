@@ -5,19 +5,12 @@ import os
 
 from app.config import settings
 from app.database import engine, Base, SessionLocal
-from app.routers import (
-    auth,
-    events,
-    bookings,
-    tickets,
-    notifications,
-    organizer,
-    admin,
-    payments,
-    coupons,
-    reviews,
-)
+from app.routers import auth, events, bookings, tickets, notifications, organizer, admin, payments, coupons, reviews
 from app.seed import seed_events_if_empty
+from app.migration import run_db_migrations
+
+# Run SQLite schema migrations for existing databases
+run_db_migrations()
 
 # Create all database tables
 Base.metadata.create_all(bind=engine)
@@ -29,13 +22,13 @@ with SessionLocal() as db:
 app = FastAPI(
     title=settings.PROJECT_NAME,
     version=settings.VERSION,
-    description="SmartEvent – Full-Stack Event Discovery, Payment System, Coupons, Reviews & Admin Platform"
+    description="SmartEvent – Multi-Role Event Discovery, Organizer Management, Payments, Reviews & Admin Analytics API"
 )
 
 # Configure CORS for Vite React frontend
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["*"],  # Allows all origins during development
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -57,6 +50,7 @@ app.include_router(admin.router, prefix=settings.API_V1_STR)
 app.include_router(payments.router, prefix=settings.API_V1_STR)
 app.include_router(coupons.router, prefix=settings.API_V1_STR)
 app.include_router(reviews.router, prefix=settings.API_V1_STR)
+
 
 @app.get("/")
 def root():

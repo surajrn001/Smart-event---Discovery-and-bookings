@@ -9,10 +9,11 @@ import { HomePage } from './pages/HomePage';
 import { EventDetailPage } from './pages/EventDetailPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
-import { PaymentCheckoutPage } from './pages/PaymentCheckoutPage';
-import { PaymentConfirmationPage } from './pages/PaymentConfirmationPage';
+import { ConfirmationPage } from './pages/ConfirmationPage';
 import { BookingHistoryPage } from './pages/BookingHistoryPage';
 import { NotificationsPage } from './pages/NotificationsPage';
+import { PaymentCheckoutPage } from './pages/PaymentCheckoutPage';
+import { PaymentConfirmationPage } from './pages/PaymentConfirmationPage';
 
 // Organizer Pages
 import { ManageEventsPage } from './pages/organizer/ManageEventsPage';
@@ -29,7 +30,7 @@ function App() {
     <BrowserRouter>
       <AuthProvider>
         <NotificationProvider>
-          <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+          <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', backgroundColor: '#F5F6F8' }}>
             <Navbar />
             <main style={{ flexGrow: 1 }}>
               <Routes>
@@ -39,9 +40,9 @@ function App() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
 
-                {/* User Protected Booking & Payment Pages */}
+                {/* Checkout & Payment Routes */}
                 <Route
-                  path="/checkout/:id"
+                  path="/checkout"
                   element={
                     <ProtectedRoute>
                       <PaymentCheckoutPage />
@@ -49,7 +50,7 @@ function App() {
                   }
                 />
                 <Route
-                  path="/payment-confirmation/:id"
+                  path="/payment-confirmation"
                   element={
                     <ProtectedRoute>
                       <PaymentConfirmationPage />
@@ -64,6 +65,8 @@ function App() {
                     </ProtectedRoute>
                   }
                 />
+
+                {/* User Protected Pages */}
                 <Route
                   path="/history"
                   element={
@@ -133,15 +136,40 @@ function App() {
                   }
                 />
 
-                {/* Catch-all Redirect */}
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </main>
+
+            {/* Main Application Footer */}
+            <footer style={{
+              background: '#1F2533',
+              borderTop: '1px solid #2B3148',
+              padding: '32px 20px',
+              color: '#94A3B8',
+              fontSize: '13px',
+              marginTop: 'auto',
+            }}>
+              <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', textAlign: 'center' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#ffffff', fontWeight: '800', fontSize: '18px' }}>
+                  Smart<span style={{ color: '#F84464' }}>Event</span>
+                </div>
+                <p style={{ maxWidth: '600px', margin: '0 auto', color: '#64748B', lineHeight: '1.6' }}>
+                  India's Premier Event Discovery, Digital Pass & Ticketing Platform. Secure payments with instant QR passes.
+                </p>
+                <div style={{ display: 'flex', gap: '20px', marginTop: '6px', fontSize: '12px' }}>
+                  <span style={{ color: '#E2E8F0' }}>© 2026 SmartEvent Entertainment Pvt. Ltd.</span>
+                  <span>Terms & Conditions</span>
+                  <span>Privacy Policy</span>
+                  <span>Support 24/7</span>
+                </div>
+              </div>
+            </footer>
           </div>
         </NotificationProvider>
       </AuthProvider>
     </BrowserRouter>
   );
 }
+
 
 export default App;

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { Ticket, User, Mail, Lock, Shield, AlertCircle } from 'lucide-react';
 
 export const RegisterPage = () => {
   const [username, setUsername] = useState('');
@@ -37,25 +38,55 @@ export const RegisterPage = () => {
   };
 
   return (
-    <div className="container" style={{ padding: '60px 16px', display: 'flex', justifyContent: 'center' }}>
-      <div className="simple-card" style={{ width: '100%', maxWidth: '400px', padding: '24px' }}>
-        <h2 style={{ fontSize: '20px', color: '#111827', marginBottom: '8px', textAlign: 'center' }}>
-          Create New Account
-        </h2>
-        <p style={{ color: '#6b7280', fontSize: '13px', marginBottom: '20px', textAlign: 'center' }}>
-          Fill in details to register on SmartEvent
-        </p>
+    <div style={{ background: '#F5F6F8', minHeight: 'calc(100vh - 120px)', padding: '60px 20px', display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+      <div className="bms-card" style={{ width: '100%', maxWidth: '440px', padding: '32px 28px' }}>
+        
+        {/* Header */}
+        <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+          <div style={{
+            width: '52px',
+            height: '52px',
+            borderRadius: '12px',
+            background: 'linear-gradient(135deg, #F84464 0%, #D81B60 100%)',
+            color: '#ffffff',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            margin: '0 auto 12px auto',
+            boxShadow: '0 4px 12px rgba(248, 68, 100, 0.35)'
+          }}>
+            <Ticket size={26} />
+          </div>
+          <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827' }}>
+            Create Your Account
+          </h2>
+          <p style={{ color: '#6B7280', fontSize: '13px', marginTop: '4px' }}>
+            Join SmartEvent to book tickets, unlock discounts, and manage events
+          </p>
+        </div>
 
         {error && (
-          <div style={{ background: '#fee2e2', color: '#dc2626', padding: '10px', borderRadius: '6px', fontSize: '13px', marginBottom: '16px' }}>
-            {error}
+          <div style={{
+            background: '#FEF2F2',
+            border: '1px solid #FCA5A5',
+            color: '#DC2626',
+            padding: '12px 14px',
+            borderRadius: '8px',
+            fontSize: '13px',
+            marginBottom: '18px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}>
+            <AlertCircle size={16} />
+            <span>{error}</span>
           </div>
         )}
 
-        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
+        <form onSubmit={handleRegister} style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '4px' }}>
-              Account Type / Role:
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+              Account Type / Role
             </label>
             <select
               value={role}
@@ -63,54 +94,66 @@ export const RegisterPage = () => {
               className="input-field"
               style={{ cursor: 'pointer' }}
             >
-              <option value="USER">Standard User (Explore & Book Tickets)</option>
-              <option value="ORGANIZER">Event Organizer (Publish & Manage Events)</option>
+              <option value="USER">Standard User (Discover & Book Event Tickets)</option>
+              <option value="ORGANIZER">Event Organizer (Create & Manage Shows)</option>
             </select>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '4px' }}>
-              Username:
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+              Username
             </label>
-            <input
-              id="register-username"
-              type="text"
-              required
-              className="input-field"
-              placeholder="e.g. rahul_kumar"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-            />
+            <div style={{ position: 'relative' }}>
+              <User size={16} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '13px' }} />
+              <input
+                id="register-username"
+                type="text"
+                required
+                className="input-field"
+                placeholder="e.g. suraj_event"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                style={{ paddingLeft: '38px' }}
+              />
+            </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '4px' }}>
-              Email ID:
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+              Email Address
             </label>
-            <input
-              id="register-email"
-              type="email"
-              required
-              className="input-field"
-              placeholder="rahul@example.com"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-            />
+            <div style={{ position: 'relative' }}>
+              <Mail size={16} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '13px' }} />
+              <input
+                id="register-email"
+                type="email"
+                required
+                className="input-field"
+                placeholder="name@example.com"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                style={{ paddingLeft: '38px' }}
+              />
+            </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '13px', fontWeight: '500', marginBottom: '4px' }}>
-              Password:
+            <label style={{ display: 'block', fontSize: '13px', fontWeight: '600', color: '#374151', marginBottom: '6px' }}>
+              Password (min. 6 characters)
             </label>
-            <input
-              id="register-password"
-              type="password"
-              required
-              className="input-field"
-              placeholder="Minimum 6 characters"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-            />
+            <div style={{ position: 'relative' }}>
+              <Lock size={16} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '13px' }} />
+              <input
+                id="register-password"
+                type="password"
+                required
+                className="input-field"
+                placeholder="Create password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                style={{ paddingLeft: '38px' }}
+              />
+            </div>
           </div>
 
           <button
@@ -118,18 +161,19 @@ export const RegisterPage = () => {
             type="submit"
             disabled={loading}
             className="btn-primary"
-            style={{ marginTop: '8px', width: '100%', padding: '10px' }}
+            style={{ width: '100%', padding: '12px', fontSize: '15px', marginTop: '6px' }}
           >
-            {loading ? 'Creating account...' : `Register as ${role === 'ORGANIZER' ? 'Organizer' : 'User'}`}
+            {loading ? 'Creating Account...' : 'Register Now'}
           </button>
         </form>
 
-        <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '13px', color: '#6b7280' }}>
+        <div style={{ marginTop: '20px', textAlign: 'center', fontSize: '13px', color: '#6B7280' }}>
           Already have an account?{' '}
-          <Link to="/login" style={{ color: '#2563eb', fontWeight: '500' }}>
-            Login here
+          <Link to="/login" style={{ color: '#F84464', fontWeight: '700' }}>
+            Sign In here
           </Link>
         </div>
+
       </div>
     </div>
   );

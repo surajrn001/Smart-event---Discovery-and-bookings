@@ -1,5 +1,5 @@
 from datetime import datetime, timedelta
-from app.models import User, Event, Coupon, Review, Booking, Payment
+from app.models import User, Event, Coupon, Review, Notification
 from app.security import hash_password
 
 DEFAULT_USERS = [
@@ -20,6 +20,45 @@ DEFAULT_USERS = [
         "email": "rahul@example.com",
         "password": "password123",
         "role": "USER"
+    }
+]
+
+SAMPLE_COUPONS = [
+    {
+        "coupon_code": "BMS50",
+        "discount_type": "PERCENTAGE",
+        "discount_value": 50.0,
+        "minimum_booking_amount": 300.0,
+        "expiry_date": datetime.utcnow() + timedelta(days=60),
+        "usage_limit": 500,
+        "is_active": True
+    },
+    {
+        "coupon_code": "FLAT100",
+        "discount_type": "FIXED",
+        "discount_value": 100.0,
+        "minimum_booking_amount": 250.0,
+        "expiry_date": datetime.utcnow() + timedelta(days=45),
+        "usage_limit": 250,
+        "is_active": True
+    },
+    {
+        "coupon_code": "WELCOME20",
+        "discount_type": "PERCENTAGE",
+        "discount_value": 20.0,
+        "minimum_booking_amount": 199.0,
+        "expiry_date": datetime.utcnow() + timedelta(days=90),
+        "usage_limit": 1000,
+        "is_active": True
+    },
+    {
+        "coupon_code": "SUPERFEST",
+        "discount_type": "FIXED",
+        "discount_value": 150.0,
+        "minimum_booking_amount": 499.0,
+        "expiry_date": datetime.utcnow() + timedelta(days=30),
+        "usage_limit": 150,
+        "is_active": True
     }
 ]
 
@@ -98,45 +137,10 @@ SAMPLE_EVENTS = [
     }
 ]
 
-SAMPLE_COUPONS = [
-    {
-        "coupon_code": "SMART50",
-        "discount_type": "PERCENTAGE",
-        "discount_value": 50.0,
-        "minimum_booking_amount": 200.0,
-        "usage_limit": 200,
-        "is_active": True
-    },
-    {
-        "coupon_code": "FESTIVE100",
-        "discount_type": "FIXED",
-        "discount_value": 100.0,
-        "minimum_booking_amount": 300.0,
-        "usage_limit": 150,
-        "is_active": True
-    },
-    {
-        "coupon_code": "EARLYBIRD",
-        "discount_type": "PERCENTAGE",
-        "discount_value": 20.0,
-        "minimum_booking_amount": 100.0,
-        "usage_limit": 500,
-        "is_active": True
-    },
-    {
-        "coupon_code": "WELCOME25",
-        "discount_type": "PERCENTAGE",
-        "discount_value": 25.0,
-        "minimum_booking_amount": 150.0,
-        "usage_limit": 100,
-        "is_active": True
-    }
-]
-
 def seed_events_if_empty(db):
     # 1. Seed default accounts if missing
     organizer_user = None
-    user_account = None
+    default_user = None
     for u_data in DEFAULT_USERS:
         existing = db.query(User).filter(User.email == u_data["email"]).first()
         if not existing:
@@ -151,13 +155,13 @@ def seed_events_if_empty(db):
             db.refresh(new_u)
             if new_u.role == "ORGANIZER":
                 organizer_user = new_u
-            elif new_u.role == "USER":
-                user_account = new_u
+            if new_u.role == "USER":
+                default_user = new_u
         else:
             if existing.role == "ORGANIZER":
                 organizer_user = existing
-            elif existing.role == "USER":
-                user_account = existing
+            if existing.role == "USER":
+                default_user = existing
 
     # 2. Seed events if missing
     count = db.query(Event).count()
@@ -168,53 +172,36 @@ def seed_events_if_empty(db):
             db.add(event)
         db.commit()
 
-    # 3. Seed coupons if empty
-    c_count = db.query(Coupon).count()
-    if c_count == 0:
+    # 3. Seed coupons if missing
+    coupon_count = db.query(Coupon).count()
+    if coupon_count == 0:
         for c_data in SAMPLE_COUPONS:
-            coupon = Coupon(
-                coupon_code=c_data["coupon_code"],
-                discount_type=c_data["discount_type"],
-                discount_value=c_data["discount_value"],
-                minimum_booking_amount=c_data["minimum_booking_amount"],
-                usage_limit=c_data["usage_limit"],
-                is_active=c_data["is_active"],
-                expiry_date=datetime.utcnow() + timedelta(days=90)
-            )
+            coupon = Coupon(**c_data)
             db.add(coupon)
         db.commit()
+        print(f"Added {len(SAMPLE_COUPONS)} promotional coupons.")
 
-    # 4. Seed sample attendee reviews if empty
-    r_count = db.query(Review).count()
-    if r_count == 0 and user_account:
-        first_event = db.query(Event).first()
-        if first_event:
-            # Check or create booking so attendance check passes
-            booking = db.query(Booking).filter(
-                Booking.event_id == first_event.id,
-                Booking.user_id == user_account.id,
-                Booking.booking_status == "CONFIRMED"
-            ).first()
-            if not booking:
-                booking = Booking(
-                    user_id=user_account.id,
-                    event_id=first_event.id,
-                    ticket_quantity=1,
-                    total_price=first_event.ticket_price,
-                    booking_status="CONFIRMED"
-                )
-                db.add(booking)
-                db.commit()
-                db.refresh(booking)
+    # 4. Seed reviews if missing
+    review_count = db.query(Review).count()
+    if review_count == 0 and default_user:
+        all_events = db.query(Event).all()
+        sample_reviews_text = [
+            (5, "Absolutely phenomenal experience! Sound quality and atmosphere were top tier. Digital pass booking made entry super seamless."),
+            (5, "Brilliant sessions, very well organized and informative. Would love to attend again next year!"),
+            (4, "Great crowd and great lineup of performers! Food stalls were a bit crowded but overall great vibe."),
+            (5, "World-class arrangement! Digital QR ticket pass worked instantaneously at the gate."),
+            (4, "Very helpful networking opportunity with founders and mentors. Value for money."),
+        ]
+        for idx, evt in enumerate(all_events):
+            rev_rating, rev_text = sample_reviews_text[idx % len(sample_reviews_text)]
+            rev = Review(
+                user_id=default_user.id,
+                event_id=evt.id,
+                rating=rev_rating,
+                review_text=rev_text,
+                created_at=datetime.utcnow() - timedelta(days=idx + 1)
+            )
+            db.add(rev)
+        db.commit()
+        print(f"Added sample reviews for ratings discovery.")
 
-            sample_reviews = [
-                {
-                    "user_id": user_account.id,
-                    "event_id": first_event.id,
-                    "rating": 5,
-                    "review_text": "Great event organization and fantastic keynote speakers. The QR entry pass worked smoothly at the gate."
-                }
-            ]
-            for sr in sample_reviews:
-                db.add(Review(**sr))
-            db.commit()

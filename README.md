@@ -1,41 +1,20 @@
 # SmartEvent – Event Discovery, Ticket Booking & Management Platform
 
-A complete full-stack web application built using **FastAPI** (Python 3.13) and **React** (Vite) for discovering events, reserving digital tickets with QR passes, processing simulated payments, applying promotional coupons, submitting attendee ratings, managing organizer events, and monitoring platform analytics.
+A complete full-stack web application built using **FastAPI** (Python 3.13) and **React** (Vite) for discovering events, reserving digital tickets with QR passes, managing organizer events, and monitoring platform analytics.
 
 ---
 
 ## Core Features
 
-- **Event Discovery & Smart Search**:
-  - Filter events by category (Tech, Music, Sports, Business).
-  - Search by title, keywords, or venue city.
-  - Date preset filtering (All Dates, This Weekend, Next 30 Days).
-  - Sort events by date (soonest/latest), ticket price (low-to-high/high-to-low), popularity (tickets sold), or attendee rating (⭐).
-- **Hero & Featured Events Showcase**:
-  - Modern hero discovery banner with interactive search.
-  - Top trending and highest-rated events highlight.
-- **Event Payment System**:
-  - Dedicated Payment Checkout page with booking summary.
-  - Supports UPI (GPay, PhonePe, Paytm), Credit/Debit Card, Net Banking, and simulated test mode.
-  - Generates verifiable transaction references (`TXN_...`).
-  - Payment Confirmation page with transaction breakdown and digital QR entry passes.
-- **Coupon & Discount System**:
-  - Promotional discount engine supporting both percentage (`%`) and fixed (`₹`) discounts.
-  - Validation checks for coupon active status, expiry date, usage limits, and minimum booking amount.
-  - Real-time subtotal, discount savings, and final payable amount calculation.
-- **Event Feedback & Ratings**:
-  - Interactive 1 to 5 star rating system with attendee reviews.
-  - Attendance verification rule: Only attendees with confirmed bookings can submit reviews.
-  - Verified attendee badge, average star rating calculations, and user review edit/delete controls.
-- **Advanced Notification System**:
-  - Notification triggers for booking confirmations, payment status (success/failure), and event updates.
-  - Sticky navbar with interactive notification bell dropdown and unread badge counter.
-  - Dedicated Notification Center with category filters (`All`, `Bookings`, `Payments`, `Events`).
-- **Role-Based Access Control (RBAC)**:
-  - `USER`: Browse events, book tickets, apply coupons, make payments, rate events, and receive passes.
-  - `ORGANIZER`: Publish events, edit details, cancel events, view attendee lists, and track sales revenue in ₹.
-  - `ADMIN`: Platform-wide oversight, KPI analytics, 14-day sales trends, and full user/event/booking tables.
-- **Digital QR Ticket Passes**: Instant cryptographic ticket generation and gate check-in verification.
+- **Event Discovery & Filtering**: Browse live events by categories (Tech, Music, Sports, Business) or search by keyword and location.
+- **Ticket Booking & QR Passes**: Book multiple tickets with real-time seat inventory deduction and instant digital QR entry passes.
+- **Role-Based Access Control (RBAC)**: Support for three distinct user roles:
+  - `USER`: Browse events, book tickets, view passes, and receive update notifications.
+  - `ORGANIZER`: Publish events, edit details, cancel events, view attendee lists, and analyze revenue in ₹.
+  - `ADMIN`: Platform-wide oversight, system KPIs, 14-day sales trends, and user/event/booking tables.
+- **Organizer Hub**: Dedicated dashboard for organizers to track sales statistics and manage their published events.
+- **Admin Dashboard**: Comprehensive platform metrics, popular event rankings, and administrative controls.
+- **In-App Notifications**: Real-time notifications for booking confirmations and event updates.
 
 ---
 
@@ -45,26 +24,15 @@ A complete full-stack web application built using **FastAPI** (Python 3.13) and 
 | :--- | :--- | :--- | :--- |
 | **Admin** | `admin@smartevent.com` | `adminpassword123` | Full Admin Portal, Platform Analytics, Users/Events/Bookings Oversight |
 | **Organizer** | `organizer@smartevent.com` | `organizerpass123` | Organizer Hub, Create Events, Sales Analytics, Manage Attendees |
-| **User** | `rahul@example.com` | `password123` | Explore events, book tickets, view passes, rate events |
+| **User** | `rahul@example.com` | `password123` | Explore events, book tickets, view passes |
 
 *(You can also register new accounts as either **User** or **Organizer** directly from the Register page).*
 
 ---
 
-## Active Promotional Coupons for Testing
-
-| Coupon Code | Discount Type | Value | Minimum Booking |
-| :--- | :--- | :--- | :--- |
-| `SMART50` | Percentage | 50% OFF | ₹200.00 |
-| `FESTIVE100` | Fixed | ₹100.00 OFF | ₹300.00 |
-| `EARLYBIRD` | Percentage | 20% OFF | ₹100.00 |
-| `WELCOME25` | Percentage | 25% OFF | ₹150.00 |
-
----
-
 ## Tech Stack
 
-- **Backend**: Python 3.13, FastAPI, SQLAlchemy, SQLite, Pydantic v2, python-jose (JWT), passlib/bcrypt, qrcode & Pillow.
+- **Backend**: Python 3.13, FastAPI, SQLAlchemy, SQLite, Pydantic v2, python-jose (JWT), bcrypt, qrcode & Pillow.
 - **Frontend**: React 19, Vite, React Router v7, Axios, Lucide React icons.
 - **Database**: SQLite (`smartevent.db`).
 
@@ -80,21 +48,21 @@ SmartEvent/
 │   │   ├── main.py              # FastAPI app instance and router configuration
 │   │   ├── config.py            # Application settings and static asset paths
 │   │   ├── database.py          # SQLAlchemy connection & session maker
-│   │   ├── models.py            # Tables: Users, Events, Bookings, Tickets, Notifications, Payments, Coupons, Reviews
-│   │   ├── schemas.py           # Pydantic v2 request/response models
+│   │   ├── models.py            # Tables: Users (with role), Events (with organizer_id & status), Bookings, Tickets, Notifications
+│   │   ├── schemas.py           # Pydantic v2 request/response and analytics models
 │   │   ├── security.py          # Bcrypt hashing and JWT generation
 │   │   ├── dependencies.py      # OAuth2 authentication and require_roles RBAC guard
-│   │   ├── seed.py              # Default accounts, coupons, reviews, and event seeder
+│   │   ├── seed.py              # Default accounts and sample event seeder
 │   │   ├── services_qr.py       # Cryptographic QR code pass generator
 │   │   └── routers/
 │   │       ├── auth.py          # Login, registration with roles, user profile
-│   │       ├── events.py        # Public events list, search, filter, sort, and rating metrics
-│   │       ├── bookings.py      # Ticket reservation, coupon application, payments & history
-│   │       ├── payments.py      # Payment gateway simulation, transaction references
-│   │       ├── coupons.py       # Promo coupon validation, listing & discount calculation
-│   │       ├── reviews.py       # 1-5 star ratings, feedback submission & verified attendee checks
+│   │       ├── events.py        # Public events list, search, filter, and lifecycle updater
+│   │       ├── bookings.py      # Ticket reservation, seat deduction & booking history
+│   │       ├── payments.py      # Payment gateway transaction simulation & checkout records
+│   │       ├── coupons.py       # Discount coupon validation and active promo codes
+│   │       ├── reviews.py       # Event star ratings, reviews distribution & feedback
 │   │       ├── tickets.py       # Digital pass verification and gate check-in
-│   │       ├── notifications.py # Notification feed with type filtering & unread counter
+│   │       ├── notifications.py # Notification feed & unread counter
 │   │       ├── organizer.py     # Organizer event CRUD, attendee lists & sales analytics
 │   │       └── admin.py         # Admin platform overview, trends, and oversight tables
 │   ├── static/qr_codes/         # Generated QR code image passes
@@ -107,18 +75,17 @@ SmartEvent/
 │   │   │   ├── AuthContext.jsx         # User authentication, JWT storage, role state
 │   │   │   └── NotificationContext.jsx # In-app notification polling & unread badge
 │   │   ├── components/
-│   │   │   ├── Navbar.jsx              # Sticky navbar with notification bell dropdown & roles
-│   │   │   ├── EventCard.jsx           # Modern event card with rating stars & hover effects
-│   │   │   ├── EventReviews.jsx        # Star rating widget & verified attendee reviews
+│   │   │   ├── Navbar.jsx              # Role-aware navigation (Organizer Hub, Admin Portal)
+│   │   │   ├── EventCard.jsx           # Event card with category badges and seat counts
 │   │   │   ├── TicketCard.jsx          # Digital ticket pass with QR code and download button
 │   │   │   └── ProtectedRoute.jsx      # Role-based route guard
 │   │   ├── pages/
-│   │   │   ├── HomePage.jsx            # Hero discovery section, trending events & advanced filters
-│   │   │   ├── EventDetailPage.jsx     # Event info, ratings, and checkout redirection
-│   │   │   ├── PaymentCheckoutPage.jsx # Secure checkout, coupon discount breakdown & payment methods
-│   │   │   ├── PaymentConfirmationPage.jsx # Transaction receipt & digital QR entry passes
-│   │   │   ├── BookingHistoryPage.jsx  # Past bookings and digital entry passes
-│   │   │   ├── NotificationsPage.jsx   # Dedicated notification center with type filters
+│   │   │   ├── HomePage.jsx            # Event discovery, banner carousel, and category filtering
+│   │   │   ├── EventDetailPage.jsx     # Event info, ticket selector, and user reviews
+│   │   │   ├── PaymentCheckoutPage.jsx # Multi-payment checkout with coupon discounts
+│   │   │   ├── PaymentConfirmationPage.jsx # Payment success summary with QR gate passes
+│   │   │   ├── BookingHistoryPage.jsx  # Past bookings and downloadable digital passes
+│   │   │   ├── NotificationsPage.jsx   # Dedicated notifications center
 │   │   │   ├── LoginPage.jsx           # User / Organizer / Admin sign in
 │   │   │   ├── RegisterPage.jsx        # Account registration with role selection
 │   │   │   ├── organizer/
@@ -129,7 +96,7 @@ SmartEvent/
 │   │   │   │   └── OrganizerAnalyticsPage.jsx # Revenue and sales statistics
 │   │   │   └── admin/
 │   │   │       └── AdminDashboardPage.jsx   # Admin platform KPIs, trends, and tables
-│   │   ├── index.css                   # Clean application styling & interactive card transitions
+│   │   ├── index.css                   # Clean, student-friendly CSS styling
 │   │   └── App.jsx                     # Complete application routing hierarchy
 │   └── package.json
 └── README.md

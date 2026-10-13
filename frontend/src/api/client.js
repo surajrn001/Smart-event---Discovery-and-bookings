@@ -45,32 +45,31 @@ export const eventsApi = {
   getEvents: (params) => api.get('/events', { params }),
   getEventDetail: (id) => api.get(`/events/${id}`),
   getCategories: () => api.get('/events/meta/categories'),
+  getCities: () => api.get('/events/meta/cities'),
 };
 
 export const bookingsApi = {
   createBooking: (data) => api.post('/bookings', data),
   getUserBookings: () => api.get('/bookings'),
   getBookingDetail: (id) => api.get(`/bookings/${id}`),
+  getBooking: (id) => api.get(`/bookings/${id}`),
 };
 
 export const paymentsApi = {
   processPayment: (data) => api.post('/payments/process', data),
-  getPayment: (id) => api.get(`/payments/${id}`),
   getBookingPayment: (bookingId) => api.get(`/payments/booking/${bookingId}`),
 };
 
 export const couponsApi = {
-  getActiveCoupons: () => api.get('/coupons'),
-  validateCoupon: (coupon_code, booking_amount) =>
-    api.post('/coupons/validate', { coupon_code, booking_amount }),
-  createCoupon: (data) => api.post('/coupons', data),
+  validateCoupon: (data) => api.post('/coupons/validate', data),
+  getActiveCoupons: () => api.get('/coupons/active'),
 };
 
 export const reviewsApi = {
   getEventReviews: (eventId) => api.get(`/events/${eventId}/reviews`),
   submitReview: (eventId, data) => api.post(`/events/${eventId}/reviews`, data),
-  updateReview: (id, data) => api.put(`/reviews/${id}`, data),
-  deleteReview: (id) => api.delete(`/reviews/${id}`),
+  updateReview: (reviewId, data) => api.put(`/reviews/${reviewId}`, data),
+  deleteReview: (reviewId) => api.delete(`/reviews/${reviewId}`),
 };
 
 export const ticketsApi = {
@@ -108,3 +107,4 @@ export const adminApi = {
 };
 
 export default api;
+

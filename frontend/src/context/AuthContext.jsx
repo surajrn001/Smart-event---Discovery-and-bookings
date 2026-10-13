@@ -1,7 +1,19 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { authApi } from '../api/client';
 
-const AuthContext = createContext();
+const AuthContext = createContext({
+  user: null,
+  token: null,
+  role: 'USER',
+  isOrganizer: false,
+  isAdmin: false,
+  isAuthenticated: false,
+  loading: false,
+  login: async () => {},
+  register: async () => {},
+  logout: () => {},
+});
+
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(() => {
@@ -87,4 +99,5 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-export const useAuth = () => useContext(AuthContext);
+export const useAuth = () => useContext(AuthContext) || {};
+

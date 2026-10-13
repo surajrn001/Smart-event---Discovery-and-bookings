@@ -1,6 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, Query, status
-from sqlalchemy.orm import Session
 from typing import List, Optional
+from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.orm import Session
 from app.database import get_db
 from app.models import User, Notification
 from app.schemas import NotificationResponse, NotificationUpdate
@@ -10,17 +10,21 @@ router = APIRouter(prefix="/notifications", tags=["Notifications"])
 
 @router.get("", response_model=List[NotificationResponse])
 def get_user_notifications(
-    type: Optional[str] = Query(None, description="Filter by notification_type: EVENT, BOOKING, PAYMENT, SYSTEM"),
-    limit: Optional[int] = Query(50, description="Max notifications to retrieve"),
+    notification_type: Optional[str] = None,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
     query = db.query(Notification).filter(Notification.user_id == current_user.id)
-    if type and type.upper() != "ALL":
-        query = query.filter(Notification.type == type.upper())
-    
-    notifications = query.order_by(Notification.created_at.desc()).limit(limit).all()
+    if notification_type and notification_type.upper() != "ALL":
+        nt = notification_type.upper()
+        query = query.filter((Notification.notification_type == nt) | (Notification.type == nt))
+    notifications = query.order_by(Notification.created_at.desc()).all()
+    # ensure notification_type is synced
+    for n in notifications:
+        if not n.notification_type:
+            n.notification_type = n.type or "EVENT"
     return notifications
+
 
 @router.get("/unread-count")
 def get_unread_count(

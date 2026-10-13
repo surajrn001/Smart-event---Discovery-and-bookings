@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr, Field
-from typing import Optional, List
+from typing import Optional, List, Dict, Any
 from datetime import datetime
 
 # --- User Schemas ---
@@ -70,19 +70,19 @@ class TicketResponse(BaseModel):
     id: int
     booking_id: int
     ticket_code: str
-    qr_code_url: str
-    is_used: bool
+    qr_code_url: Optional[str] = None
+    is_used: bool = False
     created_at: datetime
 
     class Config:
         from_attributes = True
 
 # --- Payment Schemas ---
-class PaymentCreate(BaseModel):
+class PaymentProcessRequest(BaseModel):
     booking_id: int
-    payment_method: str = "CARD"  # CARD, UPI, NETBANKING, SIMULATED
-    simulate_status: Optional[str] = "SUCCESS"  # SUCCESS, FAILED
-    card_number: Optional[str] = None
+    payment_method: str = "UPI"  # UPI, CARD, NETBANKING, STRIPE_SIM
+    simulate_status: str = "SUCCESS"  # SUCCESS or FAILED
+    card_last4: Optional[str] = None
     upi_id: Optional[str] = None
 
 class PaymentResponse(BaseModel):
@@ -100,19 +100,16 @@ class PaymentResponse(BaseModel):
 # --- Coupon Schemas ---
 class CouponBase(BaseModel):
     coupon_code: str
-    discount_type: str = "PERCENTAGE"  # PERCENTAGE or FIXED
+    discount_type: str  # PERCENTAGE or FIXED
     discount_value: float
     minimum_booking_amount: float = 0.0
-    expiry_date: Optional[datetime] = None
+    expiry_date: datetime
     usage_limit: int = 100
     is_active: bool = True
 
-class CouponCreate(CouponBase):
-    pass
-
 class CouponResponse(CouponBase):
     id: int
-    used_count: int
+    times_used: int
     created_at: datetime
 
     class Config:
@@ -136,24 +133,22 @@ class BookingCreate(BaseModel):
     event_id: int
     ticket_quantity: int = Field(..., ge=1, le=10)
     coupon_code: Optional[str] = None
-    payment_method: Optional[str] = "CARD"
-    simulate_status: Optional[str] = "SUCCESS"
 
 class BookingResponse(BaseModel):
     id: int
     user_id: int
     event_id: int
-    ticket_quantity: int
-    total_price: float
     coupon_id: Optional[int] = None
-    discount_amount: float = 0.0
-    final_amount: Optional[float] = None
+    ticket_quantity: int
+    total_price: Optional[float] = 0.0
+    discount_amount: Optional[float] = 0.0
+    final_amount: Optional[float] = 0.0
     booking_status: str
     created_at: datetime
     event: Optional[EventResponse] = None
     user: Optional[UserResponse] = None
     tickets: List[TicketResponse] = []
-    payment: Optional[PaymentResponse] = None
+    payments: List[PaymentResponse] = []
 
     class Config:
         from_attributes = True
@@ -171,19 +166,21 @@ class ReviewResponse(BaseModel):
     id: int
     user_id: int
     event_id: int
+    username: str
     rating: int
     review_text: str
     created_at: datetime
-    username: Optional[str] = None
 
     class Config:
         from_attributes = True
 
 class EventReviewsSummary(BaseModel):
-    event_id: int
     average_rating: float
     total_reviews: int
+    rating_distribution: Dict[str, int]
     reviews: List[ReviewResponse]
+    user_can_review: bool
+    user_review: Optional[ReviewResponse] = None
 
 # --- Notification Schemas ---
 class NotificationResponse(BaseModel):
@@ -191,7 +188,8 @@ class NotificationResponse(BaseModel):
     user_id: int
     title: str
     message: str
-    type: str
+    notification_type: str = "EVENT"
+    type: str = "EVENT"
     is_read: bool
     created_at: datetime
 
@@ -229,3 +227,4 @@ class AdminPlatformOverview(BaseModel):
     total_bookings: int
     total_revenue: float
     active_events: int
+

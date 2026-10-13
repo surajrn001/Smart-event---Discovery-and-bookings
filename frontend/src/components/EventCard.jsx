@@ -1,144 +1,183 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Users, Star, ArrowRight } from 'lucide-react';
+import { Calendar, MapPin, Star, Flame, Sparkles } from 'lucide-react';
 
 export const EventCard = ({ event }) => {
   const formattedDate = new Date(event.event_date).toLocaleDateString('en-IN', {
+    weekday: 'short',
     day: 'numeric',
     month: 'short',
     year: 'numeric'
   });
 
-  const getBadgeClass = (category) => {
-    switch (category?.toLowerCase()) {
-      case 'music': return 'badge-music';
-      case 'tech': return 'badge-tech';
-      case 'sports': return 'badge-sports';
-      case 'business': return 'badge-business';
-      default: return 'badge-tech';
-    }
-  };
-
   const isSoldOut = event.available_seats <= 0;
-  const seatsPercent = Math.round(((event.total_seats - event.available_seats) / event.total_seats) * 100);
+  const isFillingFast = !isSoldOut && event.available_seats <= 40;
+
+  // Rating representation
+  const hasRating = event.average_rating && event.average_rating > 0;
+  const ratingScore = hasRating ? Number(event.average_rating).toFixed(1) : null;
+  const votesCount = event.total_reviews || 0;
 
   return (
-    <div
-      className="simple-card event-card-interactive"
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'hidden',
-        borderRadius: '10px',
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        background: '#ffffff'
-      }}
-    >
-      {/* Event banner image */}
-      <div style={{ position: 'relative', width: '100%', height: '180px' }}>
-        <img
-          src={event.banner_image || 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80'}
-          alt={event.title}
-          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-          onError={(e) => {
-            e.target.onerror = null;
-            e.target.src = 'https://images.unsplash.com/photo-1540747913346-19e32dc3e97e?auto=format&fit=crop&w=800&q=80';
-          }}
-        />
-        <div style={{ position: 'absolute', top: '10px', left: '10px', display: 'flex', gap: '6px' }}>
-          <span className={`badge ${getBadgeClass(event.category)}`}>
+    <div className="bms-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      {/* Event Poster Wrap */}
+      <Link to={`/events/${event.id}`} style={{ position: 'relative', display: 'block' }}>
+        <div className="bms-poster-wrap">
+          <img
+            src={event.banner_image || 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80'}
+            alt={event.title}
+            className="bms-poster-img"
+            onError={(e) => {
+              e.target.onerror = null;
+              e.target.src = 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80';
+            }}
+          />
+
+          {/* Category Pill */}
+          <span className="bms-badge-category">
             {event.category}
+          </span>
+
+          {/* Rating Badge */}
+          <div className="bms-badge-rating">
+            {hasRating ? (
+              <>
+                <Star size={13} fill="#F59E0B" color="#F59E0B" />
+                <span>{ratingScore}/5</span>
+                {votesCount > 0 && (
+                  <span style={{ fontSize: '11px', color: '#CBD5E1', fontWeight: '500', marginLeft: '2px' }}>
+                    ({votesCount} {votesCount === 1 ? 'vote' : 'votes'})
+                  </span>
+                )}
+              </>
+            ) : (
+              <>
+                <Sparkles size={13} color="#F84464" />
+                <span>NEW</span>
+              </>
+            )}
+          </div>
+        </div>
+      </Link>
+
+      {/* Card Content Body */}
+      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
+        
+        {/* Title */}
+        <Link to={`/events/${event.id}`}>
+          <h3 style={{
+            fontSize: '16px',
+            fontWeight: '700',
+            color: '#111827',
+            marginBottom: '6px',
+            lineHeight: '1.3',
+            display: '-webkit-box',
+            WebkitLineClamp: 1,
+            WebkitBoxOrient: 'vertical',
+            overflow: 'hidden',
+            transition: 'color 0.15s ease'
+          }}
+          onMouseEnter={(e) => e.target.style.color = '#F84464'}
+          onMouseLeave={(e) => e.target.style.color = '#111827'}
+          >
+            {event.title}
+          </h3>
+        </Link>
+
+        {/* Location / Venue */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: '#6B7280', marginBottom: '8px' }}>
+          <MapPin size={13} color="#9CA3AF" />
+          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+            {event.location}
           </span>
         </div>
 
-        {event.average_rating > 0 && (
-          <div style={{
-            position: 'absolute',
-            top: '10px',
-            right: '10px',
-            background: 'rgba(255, 255, 255, 0.95)',
-            backdropFilter: 'blur(4px)',
-            padding: '3px 8px',
-            borderRadius: '12px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '3px',
-            fontSize: '12px',
-            fontWeight: 'bold',
-            color: '#92400e',
-            boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-          }}>
-            <Star size={12} fill="#f59e0b" color="#f59e0b" />
-            <span>{event.average_rating.toFixed(1)}</span>
-          </div>
-        )}
-      </div>
-
-      {/* Content */}
-      <div style={{ padding: '16px', display: 'flex', flexDirection: 'column', flexGrow: 1 }}>
-        <h3 style={{ fontSize: '16px', fontWeight: '600', marginBottom: '6px', color: '#111827', lineHeight: '1.4' }}>
-          {event.title}
-        </h3>
-
-        <p style={{
-          fontSize: '13px',
-          color: '#4b5563',
-          marginBottom: '12px',
-          display: '-webkit-box',
-          WebkitLineClamp: 2,
-          WebkitBoxOrient: 'vertical',
-          overflow: 'hidden',
-          lineHeight: '1.5'
-        }}>
-          {event.description}
-        </p>
-
-        {/* Date and Location */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', fontSize: '13px', color: '#6b7280', marginBottom: '14px' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Calendar size={14} color="#2563eb" />
-            <span>{formattedDate}</span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <MapPin size={14} color="#2563eb" />
-            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-              {event.location}
-            </span>
-          </div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-            <Users size={14} color="#2563eb" />
-            <span>{isSoldOut ? 'Sold Out' : `${event.available_seats} of ${event.total_seats} seats left`}</span>
-          </div>
+        {/* Date */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '13px', color: '#6B7280', marginBottom: '14px' }}>
+          <Calendar size={13} color="#9CA3AF" />
+          <span>{formattedDate}</span>
         </div>
 
-        {/* Price & Action button */}
+        {/* Inventory Badge */}
+        <div style={{ marginBottom: '16px' }}>
+          {isSoldOut ? (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '3px 8px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: '700',
+              background: '#FEE2E2',
+              color: '#DC2626'
+            }}>
+              SOLD OUT
+            </span>
+          ) : isFillingFast ? (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '3px 8px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: '700',
+              background: '#FEF3C7',
+              color: '#B45309'
+            }}>
+              <Flame size={12} color="#D97706" /> Filling Fast ({event.available_seats} left)
+            </span>
+          ) : (
+            <span style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              padding: '3px 8px',
+              borderRadius: '4px',
+              fontSize: '11px',
+              fontWeight: '600',
+              background: '#ECFDF5',
+              color: '#059669'
+            }}>
+              Available ({event.available_seats} seats)
+            </span>
+          )}
+        </div>
+
+        {/* Bottom Strip: Price & Book button */}
         <div style={{
           marginTop: 'auto',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
           paddingTop: '12px',
-          borderTop: '1px solid #f3f4f6',
+          borderTop: '1px solid #F3F4F6'
         }}>
           <div>
-            <div style={{ fontSize: '11px', color: '#6b7280', textTransform: 'uppercase' }}>Starts From</div>
-            <div style={{ fontSize: '18px', fontWeight: 'bold', color: '#111827' }}>
-              ₹{event.ticket_price.toFixed(2)}
+            <div style={{ fontSize: '11px', color: '#9CA3AF', textTransform: 'uppercase', fontWeight: '600' }}>
+              From
+            </div>
+            <div style={{ fontSize: '17px', fontWeight: '800', color: '#111827' }}>
+              ₹{event.ticket_price}
             </div>
           </div>
 
           <Link
             to={`/events/${event.id}`}
             className="btn-primary"
-            style={{ padding: '7px 14px', fontSize: '13px', gap: '4px' }}
+            style={{
+              padding: '8px 16px',
+              fontSize: '13px',
+              borderRadius: '6px',
+              background: isSoldOut ? '#E5E7EB' : '#F84464',
+              color: isSoldOut ? '#9CA3AF' : '#ffffff',
+              boxShadow: isSoldOut ? 'none' : '0 2px 6px rgba(248,68,100,0.3)',
+              cursor: isSoldOut ? 'default' : 'pointer'
+            }}
           >
-            {isSoldOut ? 'Sold Out' : (
-              <>
-                Book <ArrowRight size={13} />
-              </>
-            )}
+            {isSoldOut ? 'Sold Out' : 'Book Now'}
           </Link>
         </div>
+
       </div>
     </div>
   );

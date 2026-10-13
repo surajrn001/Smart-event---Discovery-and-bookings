@@ -2,7 +2,14 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { notificationsApi } from '../api/client';
 import { useAuth } from './AuthContext';
 
-const NotificationContext = createContext();
+const NotificationContext = createContext({
+  notifications: [],
+  unreadCount: 0,
+  loading: false,
+  fetchNotifications: async () => {},
+  markAsRead: async () => {},
+  markAllAsRead: async () => {},
+});
 
 export const NotificationProvider = ({ children }) => {
   const { isAuthenticated } = useAuth();
@@ -78,4 +85,5 @@ export const NotificationProvider = ({ children }) => {
   );
 };
 
-export const useNotifications = () => useContext(NotificationContext);
+export const useNotifications = () => useContext(NotificationContext) || {};
+

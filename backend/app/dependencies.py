@@ -26,6 +26,19 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         raise credentials_exception
     return user
 
+oauth2_scheme_optional = OAuth2PasswordBearer(tokenUrl="/api/auth/login", auto_error=False)
+
+def get_optional_current_user(token: str = Depends(oauth2_scheme_optional), db: Session = Depends(get_db)):
+    if not token:
+        return None
+    payload = decode_access_token(token)
+    if not payload:
+        return None
+    user_id = payload.get("sub")
+    if not user_id:
+        return None
+    return db.query(User).filter(User.id == int(user_id)).first()
+
 def require_roles(allowed_roles: List[str]) -> Callable:
     """
     Dependency factory to enforce role-based access control (RBAC).
@@ -46,3 +59,4 @@ def require_roles(allowed_roles: List[str]) -> Callable:
             )
         return current_user
     return role_checker
+

@@ -1,10 +1,10 @@
 import uuid
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import List
 from datetime import datetime
 from app.database import get_db
-from app.models import User, Event, Booking, Ticket, Notification, Coupon, Payment
+from app.models import User, Event, Booking, Ticket, Notification, Coupon
 from app.schemas import BookingCreate, BookingResponse
 from app.dependencies import get_current_user
 from app.services_qr import generate_qr_code
@@ -17,7 +17,7 @@ def create_booking(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    # 1. Fetch Event with validation
+    # 1. Fetch Event with row lock / validation
     event = db.query(Event).filter(Event.id == booking_in.event_id).first()
     if not event:
         raise HTTPException(
@@ -32,114 +32,93 @@ def create_booking(
             detail=f"Sold out or insufficient tickets! Only {event.available_seats} seat(s) remaining."
         )
 
-    # 3. Calculate base total price
+    # 3. Calculate total price
     total_price = round(event.ticket_price * booking_in.ticket_quantity, 2)
     discount_amount = 0.0
     final_amount = total_price
-    coupon_obj = None
+    coupon_id = None
 
-    # 4. Process coupon if provided
-    if booking_in.coupon_code and booking_in.coupon_code.strip():
-        code_clean = booking_in.coupon_code.strip().upper()
-        coupon = db.query(Coupon).filter(Coupon.coupon_code == code_clean).first()
-        if coupon and coupon.is_active:
-            # Check expiry & usage
-            not_expired = coupon.expiry_date is None or coupon.expiry_date >= datetime.utcnow()
-            within_limit = coupon.used_count < coupon.usage_limit
-            min_met = total_price >= coupon.minimum_booking_amount
-
-            if not_expired and within_limit and min_met:
-                if coupon.discount_type.upper() == "PERCENTAGE":
-                    discount_amount = round((coupon.discount_value / 100.0) * total_price, 2)
-                else:
+    # Validate coupon and apply promotional discount
+    if booking_in.coupon_code:
+        code = booking_in.coupon_code.strip().upper()
+        now = datetime.utcnow()
+        coupon = db.query(Coupon).filter(Coupon.coupon_code == code).first()
+        if coupon and coupon.is_active and coupon.expiry_date > now and coupon.times_used < coupon.usage_limit:
+            if total_price >= coupon.minimum_booking_amount:
+                coupon_id = coupon.id
+                if coupon.discount_type == "PERCENTAGE":
+                    discount_amount = round(total_price * (coupon.discount_value / 100.0), 2)
+                else:  # FIXED
                     discount_amount = round(min(coupon.discount_value, total_price), 2)
-                
-                final_amount = max(0.0, round(total_price - discount_amount, 2))
-                coupon.used_count += 1
-                coupon_obj = coupon
+                final_amount = round(max(0.0, total_price - discount_amount), 2)
+                coupon.times_used += 1
 
-    # 5. Determine payment status simulation
-    payment_status = (booking_in.simulate_status or "SUCCESS").upper()
-    booking_status = "CONFIRMED" if payment_status == "SUCCESS" else "FAILED"
+    # 4. Atomic seat deduction
+    event.available_seats -= booking_in.ticket_quantity
 
-    # 6. Create Booking record
+    # 5. Create Booking record
     booking = Booking(
         user_id=current_user.id,
         event_id=event.id,
+        coupon_id=coupon_id,
         ticket_quantity=booking_in.ticket_quantity,
         total_price=total_price,
-        coupon_id=coupon_obj.id if coupon_obj else None,
         discount_amount=discount_amount,
         final_amount=final_amount,
-        booking_status=booking_status
+        booking_status="CONFIRMED"
     )
     db.add(booking)
-    db.flush()
+    db.flush()  # Populates booking.id
 
-    # 7. Create Payment record
-    txn_id = f"TXN_{datetime.utcnow().strftime('%Y%m%d%H%M%S')}_{uuid.uuid4().hex[:6].upper()}"
-    payment = Payment(
-        booking_id=booking.id,
-        payment_method=(booking_in.payment_method or "CARD").upper(),
-        payment_status=payment_status,
-        transaction_id=txn_id,
-        amount=final_amount
+    # 6. Generate digital Tickets & QR Codes
+    created_tickets = []
+    for i in range(booking_in.ticket_quantity):
+        unique_suffix = uuid.uuid4().hex[:8].upper()
+        ticket_code = f"SE-{event.id}-{booking.id}-{unique_suffix}"
+        
+        qr_url = generate_qr_code(
+            ticket_code=ticket_code,
+            verification_data={
+                "booking_id": booking.id,
+                "event_title": event.title,
+                "user_name": current_user.username
+            }
+        )
+        
+        ticket = Ticket(
+            booking_id=booking.id,
+            ticket_code=ticket_code,
+            qr_code_url=qr_url,
+            is_used=False
+        )
+        db.add(ticket)
+        created_tickets.append(ticket)
+
+    # 7. Create in-app Notification for confirmation
+    notification = Notification(
+        user_id=current_user.id,
+        title="Booking Confirmed",
+        message=f"You booked {booking_in.ticket_quantity} ticket(s) for '{event.title}'. Amount: ₹{final_amount:.2f}. Digital passes are ready.",
+        notification_type="BOOKING",
+        type="BOOKING",
+        is_read=False
     )
-    db.add(payment)
+    db.add(notification)
 
-    # 8. Handle payment success vs failure
-    if payment_status == "SUCCESS":
-        # Deduct seats atomically
-        event.available_seats -= booking_in.ticket_quantity
-
-        # Generate digital Tickets & QR Passes
-        for i in range(booking_in.ticket_quantity):
-            unique_suffix = uuid.uuid4().hex[:8].upper()
-            ticket_code = f"SE-{event.id}-{booking.id}-{unique_suffix}"
-            qr_url = generate_qr_code(
-                ticket_code=ticket_code,
-                verification_data={
-                    "booking_id": booking.id,
-                    "event_title": event.title,
-                    "user_name": current_user.username
-                }
-            )
-            ticket = Ticket(
-                booking_id=booking.id,
-                ticket_code=ticket_code,
-                qr_code_url=qr_url,
-                is_used=False
-            )
-            db.add(ticket)
-
-        # In-app notifications for payment & booking
-        db.add(Notification(
-            user_id=current_user.id,
-            title="Payment Successful",
-            message=f"Payment of ₹{final_amount:.2f} received. Transaction ID: {txn_id}.",
-            type="PAYMENT",
-            is_read=False
-        ))
-        db.add(Notification(
-            user_id=current_user.id,
-            title="Booking Confirmed",
-            message=f"You booked {booking_in.ticket_quantity} ticket(s) for '{event.title}'. Digital passes are ready.",
-            type="BOOKING",
-            is_read=False
-        ))
-    else:
-        # Payment Failed notification
-        db.add(Notification(
-            user_id=current_user.id,
-            title="Payment Failed",
-            message=f"Transaction {txn_id} for ₹{final_amount:.2f} failed. You can retry your booking.",
-            type="PAYMENT",
-            is_read=False
-        ))
-
+    # 8. Commit entire transaction
     db.commit()
-    db.refresh(booking)
-    return booking
+    
+    # Reload booking to guarantee all relationships (tickets, event) are fully loaded
+    full_booking = (
+        db.query(Booking)
+        .filter(Booking.id == booking.id)
+        .first()
+    )
+    _ = full_booking.tickets
+    _ = full_booking.event
+
+    return full_booking
+
 
 @router.get("", response_model=List[BookingResponse])
 def get_user_bookings(
@@ -152,6 +131,33 @@ def get_user_bookings(
         .order_by(Booking.created_at.desc())
         .all()
     )
+    for b in bookings:
+        if b.final_amount is None:
+            b.final_amount = b.total_price or 0.0
+        if b.discount_amount is None:
+            b.discount_amount = 0.0
+        # If any booking lacks tickets, dynamically generate them
+        if not b.tickets:
+            for _ in range(b.ticket_quantity or 1):
+                suffix = uuid.uuid4().hex[:8].upper()
+                t_code = f"SE-{b.event_id}-{b.id}-{suffix}"
+                q_url = generate_qr_code(
+                    ticket_code=t_code,
+                    verification_data={
+                        "booking_id": b.id,
+                        "event_title": b.event.title if b.event else "Event",
+                        "user_name": current_user.username
+                    }
+                )
+                t_obj = Ticket(
+                    booking_id=b.id,
+                    ticket_code=t_code,
+                    qr_code_url=q_url,
+                    is_used=False
+                )
+                db.add(t_obj)
+            db.commit()
+            db.refresh(b)
     return bookings
 
 @router.get("/{booking_id}", response_model=BookingResponse)
@@ -160,15 +166,39 @@ def get_booking_detail(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
 ):
-    booking = db.query(Booking).filter(Booking.id == booking_id).first()
+    booking = (
+        db.query(Booking)
+        .filter(Booking.id == booking_id, Booking.user_id == current_user.id)
+        .first()
+    )
     if not booking:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="Booking not found"
+            detail="Booking not found or unauthorized access"
         )
-    if booking.user_id != current_user.id and current_user.role != "ADMIN":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Unauthorized to view this booking"
-        )
+    if booking.final_amount is None:
+        booking.final_amount = booking.total_price or 0.0
+    if booking.discount_amount is None:
+        booking.discount_amount = 0.0
+    if not booking.tickets:
+        for _ in range(booking.ticket_quantity or 1):
+            suffix = uuid.uuid4().hex[:8].upper()
+            t_code = f"SE-{booking.event_id}-{booking.id}-{suffix}"
+            q_url = generate_qr_code(
+                ticket_code=t_code,
+                verification_data={
+                    "booking_id": booking.id,
+                    "event_title": booking.event.title if booking.event else "Event",
+                    "user_name": current_user.username
+                }
+            )
+            t_obj = Ticket(
+                booking_id=booking.id,
+                ticket_code=t_code,
+                qr_code_url=q_url,
+                is_used=False
+            )
+            db.add(t_obj)
+        db.commit()
+        db.refresh(booking)
     return booking

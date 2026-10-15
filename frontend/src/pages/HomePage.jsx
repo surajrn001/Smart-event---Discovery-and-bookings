@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { eventsApi, couponsApi } from '../api/client';
+import { eventsApi, couponsApi, recommendationsApi } from '../api/client';
 import { EventCard } from '../components/EventCard';
 import { 
   Search, 
@@ -13,7 +13,11 @@ import {
   ChevronLeft,
   Flame,
   CheckCircle2,
-  Copy
+  Copy,
+  SlidersHorizontal,
+  X,
+  TrendingUp,
+  Sliders
 } from 'lucide-react';
 
 const CATEGORIES = [
@@ -34,12 +38,21 @@ export const HomePage = () => {
   const [activeCoupons, setActiveCoupons] = useState([]);
   const [copiedCode, setCopiedCode] = useState(null);
 
-  // Filters state from query parameters or default
+  // Recommendations state
+  const [recommendedEvents, setRecommendedEvents] = useState([]);
+  const [loadingRecommended, setLoadingRecommended] = useState(true);
+  const [trendingEvents, setTrendingEvents] = useState([]);
+  const [loadingTrending, setLoadingTrending] = useState(true);
+
+  // Search and filter state
   const [searchTerm, setSearchTerm] = useState(searchParams.get('search') || '');
   const [selectedCategory, setSelectedCategory] = useState(searchParams.get('category') || 'All');
   const [selectedCity, setSelectedCity] = useState(searchParams.get('location') || 'All Cities');
   const [selectedDateFilter, setSelectedDateFilter] = useState('ALL');
+  const [customDate, setCustomDate] = useState('');
+  const [maxPriceFilter, setMaxPriceFilter] = useState(5000);
   const [sortBy, setSortBy] = useState('date_asc');
+  const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
 
   // Hero carousel slide index
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -61,7 +74,22 @@ export const HomePage = () => {
       .catch((err) => console.log('Coupons load note:', err));
   }, []);
 
-  // Fetch events with all filters & sort
+  // Fetch Personalized Recommendations & Trending Events
+  useEffect(() => {
+    // Recommendations
+    recommendationsApi.getRecommendations(4)
+      .then((res) => setRecommendedEvents(res.data || []))
+      .catch((err) => console.log('Recommendations load note:', err))
+      .finally(() => setLoadingRecommended(false));
+
+    // Trending
+    recommendationsApi.getTrending(4)
+      .then((res) => setTrendingEvents(res.data || []))
+      .catch((err) => console.log('Trending load note:', err))
+      .finally(() => setLoadingTrending(false));
+  }, []);
+
+  // Fetch events with all filters & sort criteria
   const fetchEvents = async () => {
     try {
       setLoading(true);
@@ -74,6 +102,9 @@ export const HomePage = () => {
       }
       if (selectedCity !== 'All Cities') {
         params.location = selectedCity;
+      }
+      if (maxPriceFilter < 5000) {
+        params.max_price = maxPriceFilter;
       }
 
       // Date range filtering
@@ -95,6 +126,10 @@ export const HomePage = () => {
         sunday.setDate(saturday.getDate() + 1);
         params.start_date = new Date(saturday.setHours(0,0,0,0)).toISOString();
         params.end_date = new Date(sunday.setHours(23,59,59,999)).toISOString();
+      } else if (selectedDateFilter === 'CUSTOM' && customDate) {
+        const cDate = new Date(customDate);
+        params.start_date = new Date(cDate.setHours(0,0,0,0)).toISOString();
+        params.end_date = new Date(cDate.setHours(23,59,59,999)).toISOString();
       }
 
       // Sorting
@@ -113,7 +148,7 @@ export const HomePage = () => {
 
   useEffect(() => {
     fetchEvents();
-  }, [selectedCategory, selectedCity, selectedDateFilter, sortBy]);
+  }, [selectedCategory, selectedCity, selectedDateFilter, customDate, maxPriceFilter, sortBy]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -125,6 +160,8 @@ export const HomePage = () => {
     setSelectedCategory('All');
     setSelectedCity('All Cities');
     setSelectedDateFilter('ALL');
+    setCustomDate('');
+    setMaxPriceFilter(5000);
     setSortBy('date_asc');
     setSearchParams({});
   };
@@ -135,8 +172,15 @@ export const HomePage = () => {
     setTimeout(() => setCopiedCode(null), 2500);
   };
 
-  // Top trending events for Hero Carousel
+  // Featured events for Hero Carousel
   const featuredEvents = events.slice(0, 3);
+
+  // Active filter count
+  const activeFilterCount = (selectedCategory !== 'All' ? 1 : 0) +
+    (selectedCity !== 'All Cities' ? 1 : 0) +
+    (selectedDateFilter !== 'ALL' ? 1 : 0) +
+    (maxPriceFilter < 5000 ? 1 : 0) +
+    (searchTerm.trim() ? 1 : 0);
 
   return (
     <div className="container" style={{ paddingBottom: '80px' }}>
@@ -327,16 +371,120 @@ export const HomePage = () => {
         </div>
       )}
 
-      {/* Search & Filter Controls */}
+      {/* Recommended for You Section */}
+      {recommendedEvents.length > 0 && (
+        <div style={{ marginBottom: '36px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                background: 'linear-gradient(135deg, #F84464 0%, #D81B60 100%)',
+                color: '#ffffff',
+                padding: '6px',
+                borderRadius: '8px',
+                display: 'flex'
+              }}>
+                <Sparkles size={18} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Recommended for You</span>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    color: '#F84464',
+                    background: '#FFF0F2',
+                    padding: '2px 8px',
+                    borderRadius: '10px'
+                  }}>
+                    SMART MATCH
+                  </span>
+                </h2>
+                <p style={{ fontSize: '13px', color: '#64748B', margin: '2px 0 0 0' }}>
+                  Curated picks based on your activity, booked categories, and city preference
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '20px'
+          }}>
+            {recommendedEvents.map((evt) => (
+              <EventCard key={`rec_${evt.id}`} event={evt} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Trending Events Section */}
+      {trendingEvents.length > 0 && (
+        <div style={{ marginBottom: '36px' }}>
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            marginBottom: '16px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div style={{
+                background: '#FEF3C7',
+                color: '#D97706',
+                padding: '6px',
+                borderRadius: '8px',
+                display: 'flex'
+              }}>
+                <Flame size={18} />
+              </div>
+              <div>
+                <h2 style={{ fontSize: '20px', fontWeight: '800', color: '#111827', margin: 0, display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span>Trending Events</span>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: '700',
+                    color: '#B45309',
+                    background: '#FEF3C7',
+                    padding: '2px 8px',
+                    borderRadius: '10px'
+                  }}>
+                    HOT SELLING
+                  </span>
+                </h2>
+                <p style={{ fontSize: '13px', color: '#64748B', margin: '2px 0 0 0' }}>
+                  The most popular experiences with highest audience bookings this week
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))',
+            gap: '20px'
+          }}>
+            {trendingEvents.map((evt) => (
+              <EventCard key={`trend_${evt.id}`} event={evt} />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Search & Smart Filters Toolbar */}
       <div style={{
         background: '#ffffff',
-        borderRadius: '12px',
-        padding: '18px 20px',
+        borderRadius: '14px',
+        padding: '20px',
         boxShadow: 'var(--shadow-sm)',
         border: '1px solid #E5E7EB',
         marginBottom: '28px'
       }}>
-        {/* Top search & city selector */}
+        {/* Main Search Row */}
         <div style={{
           display: 'flex',
           gap: '12px',
@@ -344,23 +492,24 @@ export const HomePage = () => {
           flexWrap: 'wrap',
           marginBottom: '16px'
         }}>
+          {/* Keyword Search */}
           <form 
             onSubmit={handleSearchSubmit} 
             style={{ flex: 1, minWidth: '260px', position: 'relative' }}
           >
-            <Search size={17} color="#9CA3AF" style={{ position: 'absolute', left: '12px', top: '12px' }} />
+            <Search size={17} color="#9CA3AF" style={{ position: 'absolute', left: '14px', top: '12px' }} />
             <input
               type="text"
               className="input-field"
-              placeholder="Search by event title, artist or keyword..."
+              placeholder="Search by title, artist, keyword or venue..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              style={{ paddingLeft: '38px' }}
+              style={{ paddingLeft: '40px' }}
             />
           </form>
 
-          {/* City filter */}
-          <div style={{ minWidth: '160px' }}>
+          {/* City / Location filter */}
+          <div style={{ minWidth: '150px' }}>
             <select
               className="input-field"
               value={selectedCity}
@@ -373,8 +522,8 @@ export const HomePage = () => {
             </select>
           </div>
 
-          {/* Date Range filter */}
-          <div style={{ minWidth: '150px' }}>
+          {/* Date Range quick selector */}
+          <div style={{ minWidth: '140px' }}>
             <select
               className="input-field"
               value={selectedDateFilter}
@@ -385,11 +534,12 @@ export const HomePage = () => {
               <option value="TODAY">Today</option>
               <option value="TOMORROW">Tomorrow</option>
               <option value="WEEKEND">This Weekend</option>
+              <option value="CUSTOM">Specific Date...</option>
             </select>
           </div>
 
-          {/* Sort By dropdown */}
-          <div style={{ minWidth: '180px' }}>
+          {/* Sort By selector */}
+          <div style={{ minWidth: '170px' }}>
             <select
               className="input-field"
               value={sortBy}
@@ -405,15 +555,108 @@ export const HomePage = () => {
             </select>
           </div>
 
+          {/* Toggle More Filters */}
           <button
             type="button"
-            onClick={clearFilters}
-            className="btn-secondary"
-            style={{ padding: '10px 14px', fontSize: '13px' }}
+            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+            className={showAdvancedFilters ? 'btn-primary' : 'btn-secondary'}
+            style={{ padding: '9px 14px', fontSize: '13px', display: 'flex', alignItems: 'center', gap: '6px' }}
           >
-            Reset
+            <SlidersHorizontal size={15} />
+            <span>Filters</span>
+            {activeFilterCount > 0 && (
+              <span style={{
+                background: showAdvancedFilters ? '#ffffff' : '#F84464',
+                color: showAdvancedFilters ? '#F84464' : '#ffffff',
+                fontSize: '11px',
+                fontWeight: '800',
+                borderRadius: '50%',
+                width: '18px',
+                height: '18px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}>
+                {activeFilterCount}
+              </span>
+            )}
           </button>
+
+          {activeFilterCount > 0 && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              style={{
+                background: 'none',
+                border: 'none',
+                color: '#EF4444',
+                fontSize: '12px',
+                fontWeight: '700',
+                cursor: 'pointer',
+                padding: '4px 8px'
+              }}
+            >
+              Clear All
+            </button>
+          )}
         </div>
+
+        {/* Expandable Advanced Smart Filters Strip */}
+        {showAdvancedFilters && (
+          <div style={{
+            background: '#F8FAFC',
+            border: '1px solid #E2E8F0',
+            borderRadius: '10px',
+            padding: '16px',
+            marginBottom: '16px',
+            display: 'flex',
+            flexWrap: 'wrap',
+            gap: '24px',
+            alignItems: 'center',
+            justifyContent: 'space-between'
+          }}>
+            {/* Price Slider */}
+            <div style={{ flex: 1, minWidth: '240px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', marginBottom: '6px' }}>
+                <span style={{ fontWeight: '700', color: '#334155' }}>Price Budget:</span>
+                <span style={{ fontWeight: '800', color: '#F84464' }}>
+                  {maxPriceFilter >= 5000 ? 'Any Price (Up to ₹5,000+)' : `Up to ₹${maxPriceFilter}`}
+                </span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="5000"
+                step="250"
+                value={maxPriceFilter}
+                onChange={(e) => setMaxPriceFilter(Number(e.target.value))}
+                style={{ width: '100%', accentColor: '#F84464', cursor: 'pointer' }}
+              />
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: '#94A3B8', marginTop: '4px' }}>
+                <span>₹0 (Free)</span>
+                <span>₹1,500</span>
+                <span>₹3,000</span>
+                <span>₹5,000+</span>
+              </div>
+            </div>
+
+            {/* Custom Date Input if selected */}
+            {selectedDateFilter === 'CUSTOM' && (
+              <div style={{ minWidth: '180px' }}>
+                <label style={{ display: 'block', fontSize: '12px', fontWeight: '700', color: '#334155', marginBottom: '6px' }}>
+                  Pick Event Date:
+                </label>
+                <input
+                  type="date"
+                  className="input-field"
+                  value={customDate}
+                  onChange={(e) => setCustomDate(e.target.value)}
+                  style={{ fontSize: '13px', padding: '6px 10px' }}
+                />
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Category Filter Pills */}
         <div style={{
@@ -436,7 +679,7 @@ export const HomePage = () => {
         </div>
       </div>
 
-      {/* 4. Section Title & Active Filters Count */}
+      {/* Section Title & Active Filters Count */}
       <div style={{
         display: 'flex',
         alignItems: 'center',
@@ -445,7 +688,7 @@ export const HomePage = () => {
       }}>
         <div>
           <h2 style={{ fontSize: '22px', fontWeight: '800', color: '#111827', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>The Best of Live Events</span>
+            <span>Explore All Events</span>
             {selectedCity !== 'All Cities' && (
               <span style={{ fontSize: '16px', color: '#F84464', fontWeight: '600' }}>
                 in {selectedCity}
@@ -493,7 +736,7 @@ export const HomePage = () => {
             No Events Match Your Search Criteria
           </h3>
           <p style={{ fontSize: '14px', color: '#6B7280', maxWidth: '440px', margin: '0 auto 20px auto' }}>
-            We couldn't find any events matching your selected filters in {selectedCity}. Try clearing filters or searching for another keyword.
+            We couldn't find any events matching your selected filters in {selectedCity}. Try adjusting the price slider or resetting filters.
           </p>
           <button onClick={clearFilters} className="btn-primary">
             Clear All Filters

@@ -5,7 +5,7 @@ from typing import List, Optional
 from datetime import datetime
 from app.database import get_db
 from app.models import Event, Review, Booking
-from app.schemas import EventResponse
+from app.schemas import EventResponse, LiveSeatsResponse
 
 router = APIRouter(prefix="/events", tags=["Events"])
 
@@ -35,6 +35,8 @@ def get_events(
     location: Optional[str] = Query(None, description="Filter by location or city"),
     start_date: Optional[datetime] = Query(None, description="Filter events on or after start_date"),
     end_date: Optional[datetime] = Query(None, description="Filter events on or before end_date"),
+    min_price: Optional[float] = Query(None, description="Filter events with ticket price >= min_price"),
+    max_price: Optional[float] = Query(None, description="Filter events with ticket price <= max_price"),
     sort_by: Optional[str] = Query("date_asc", description="Sort by: date_asc, date_desc, popularity, price_asc, price_desc, rating"),
     status: Optional[str] = Query(None, description="Filter by event_status (UPCOMING, ONGOING, COMPLETED, CANCELLED)"),
     db: Session = Depends(get_db)
@@ -66,11 +68,17 @@ def get_events(
     if end_date:
         query = query.filter(Event.event_date <= end_date)
 
-    # 5. Status Filter
+    # 5. Price Range Filter
+    if min_price is not None:
+        query = query.filter(Event.ticket_price >= min_price)
+    if max_price is not None:
+        query = query.filter(Event.ticket_price <= max_price)
+
+    # 6. Status Filter
     if status and status.lower() != "all":
         query = query.filter(Event.event_status.ilike(status))
 
-    # 6. Sorting
+    # 7. Sorting
     if sort_by == "date_desc":
         query = query.order_by(desc(Event.event_date))
     elif sort_by == "price_asc":
@@ -78,7 +86,6 @@ def get_events(
     elif sort_by == "price_desc":
         query = query.order_by(desc(Event.ticket_price))
     elif sort_by == "popularity":
-        # Popularity: fewer remaining seats (more sold) or higher booked count
         query = query.order_by(asc(Event.available_seats))
     else:  # default: date_asc
         query = query.order_by(asc(Event.event_date))
@@ -95,6 +102,24 @@ def get_events(
         events.sort(key=lambda e: (e.average_rating or 0.0, e.total_reviews or 0), reverse=True)
 
     return events
+
+@router.get("/{event_id}/live-seats", response_model=LiveSeatsResponse)
+def get_live_seats(event_id: int, db: Session = Depends(get_db)):
+    """Fetch live available seats and sold-out status for an event."""
+    event = db.query(Event).filter(Event.id == event_id).first()
+    if not event:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Event with ID {event_id} was not found"
+        )
+    auto_update_event_status(event)
+    return LiveSeatsResponse(
+        event_id=event.id,
+        available_seats=event.available_seats,
+        total_seats=event.total_seats,
+        is_sold_out=event.available_seats <= 0,
+        event_status=event.event_status
+    )
 
 @router.get("/{event_id}", response_model=EventResponse)
 def get_event_detail(event_id: int, db: Session = Depends(get_db)):

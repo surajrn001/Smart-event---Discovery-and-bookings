@@ -18,10 +18,30 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     role: str
+    bio: Optional[str] = ""
+    phone: Optional[str] = ""
+    city: Optional[str] = ""
+    avatar_url: Optional[str] = ""
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+class UserProfileUpdate(BaseModel):
+    username: Optional[str] = Field(None, min_length=3, max_length=50)
+    bio: Optional[str] = Field(None, max_length=300)
+    phone: Optional[str] = Field(None, max_length=20)
+    city: Optional[str] = Field(None, max_length=100)
+    avatar_url: Optional[str] = None
+
+class UserActivitySummary(BaseModel):
+    total_bookings: int
+    total_tickets: int
+    total_spent: float
+    upcoming_events_count: int
+    wishlist_count: int
+    reviews_count: int
+    favorite_category: Optional[str] = None
 
 class TokenResponse(BaseModel):
     access_token: str
@@ -227,4 +247,54 @@ class AdminPlatformOverview(BaseModel):
     total_bookings: int
     total_revenue: float
     active_events: int
+
+# --- Wishlist Schemas ---
+class WishlistResponse(BaseModel):
+    id: int
+    user_id: int
+    event_id: int
+    created_at: datetime
+    event: Optional[EventResponse] = None
+
+    class Config:
+        from_attributes = True
+
+class WishlistToggleResponse(BaseModel):
+    event_id: int
+    is_wishlisted: bool
+    message: str
+
+# --- Live Event Updates Schemas ---
+class EventUpdateCreate(BaseModel):
+    message: str = Field(..., min_length=3, max_length=1000)
+
+class EventUpdateResponse(BaseModel):
+    id: int
+    event_id: int
+    message: str
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+# --- Real-Time Live Seat Availability Schemas ---
+class LiveSeatsResponse(BaseModel):
+    event_id: int
+    available_seats: int
+    total_seats: int
+    is_sold_out: bool
+    event_status: str
+
+# --- AI Chatbot Assistant Schemas ---
+class ChatbotMessageRequest(BaseModel):
+    message: str
+    city: Optional[str] = None
+    conversation_history: Optional[List[Dict[str, str]]] = []
+
+class ChatbotMessageResponse(BaseModel):
+    reply: str
+    suggested_events: List[EventResponse] = []
+    quick_actions: List[str] = []
+    action_type: Optional[str] = None
+
 

@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { eventsApi, reviewsApi } from '../api/client';
+import { eventsApi, reviewsApi, updatesApi, recommendationsApi } from '../api/client';
 import { useAuth } from '../context/AuthContext';
+import { useWishlist } from '../context/WishlistContext';
 import { 
   Calendar, 
   MapPin, 
@@ -18,18 +19,35 @@ import {
   Edit2,
   Sparkles,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Heart,
+  Radio,
+  Megaphone,
+  Zap,
+  Send
 } from 'lucide-react';
 
 export const EventDetailPage = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isOrganizer, isAdmin } = useAuth();
+  const { isWishlisted, toggleWishlist } = useWishlist();
 
   const [event, setEvent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
   const [error, setError] = useState('');
+
+  // Live Seat Availability state
+  const [isLiveConnected, setIsLiveConnected] = useState(false);
+  const [seatUpdateFlash, setSeatUpdateFlash] = useState(false);
+
+  // Live Event Announcements state
+  const [updatesList, setUpdatesList] = useState([]);
+  const [loadingUpdates, setLoadingUpdates] = useState(true);
+  const [newUpdateMessage, setNewUpdateMessage] = useState('');
+  const [postingUpdate, setPostingUpdate] = useState(false);
+  const [updateSuccess, setUpdateSuccess] = useState('');
 
   // Reviews & Ratings state
   const [reviewsData, setReviewsData] = useState(null);
@@ -41,10 +59,82 @@ export const EventDetailPage = () => {
   const [reviewErrorMsg, setReviewErrorMsg] = useState('');
   const [editingReviewId, setEditingReviewId] = useState(null);
 
-  // Load event details and reviews
+  // Load event details, reviews, announcements, and track event view
   useEffect(() => {
     loadEventDetails();
     loadReviews();
+    loadEventUpdates();
+
+    // Track user view for personalized recommendations
+    if (id) {
+      recommendationsApi.recordView(id).catch(() => {});
+    }
+  }, [id]);
+
+  // Real-time seat updates via WebSocket with fallback polling
+  useEffect(() => {
+    if (!id) return;
+
+    let socket = null;
+    let fallbackInterval = null;
+
+    try {
+      socket = new WebSocket(`ws://127.0.0.1:8001/ws/events/${id}`);
+      socket.onopen = () => {
+        setIsLiveConnected(true);
+      };
+      socket.onmessage = (msgEvent) => {
+        try {
+          const payload = JSON.parse(msgEvent.data);
+          if (payload.type === 'SEAT_UPDATE' && Number(payload.event_id) === Number(id)) {
+            setEvent((prev) => {
+              if (!prev) return prev;
+              return {
+                ...prev,
+                available_seats: payload.available_seats,
+              };
+            });
+            setSeatUpdateFlash(true);
+            setTimeout(() => setSeatUpdateFlash(false), 2500);
+          }
+        } catch (e) {
+          console.log('Error parsing WS message:', e);
+        }
+      };
+      socket.onerror = () => {
+        setIsLiveConnected(false);
+      };
+      socket.onclose = () => {
+        setIsLiveConnected(false);
+      };
+    } catch (e) {
+      console.log('WebSocket connection error:', e);
+    }
+
+    // Polling fallback every 8 seconds
+    fallbackInterval = setInterval(async () => {
+      try {
+        const res = await eventsApi.getLiveSeats(id);
+        if (res.data) {
+          setEvent((prev) => {
+            if (!prev) return prev;
+            if (prev.available_seats !== res.data.available_seats) {
+              setSeatUpdateFlash(true);
+              setTimeout(() => setSeatUpdateFlash(false), 2500);
+              return { ...prev, available_seats: res.data.available_seats };
+            }
+            return prev;
+          });
+        }
+      } catch (err) {
+        // silent polling error
+      }
+    }, 8000);
+
+    return () => {
+      if (socket) socket.close();
+      if (fallbackInterval) clearInterval(fallbackInterval);
+    };
   }, [id]);
 
   const loadEventDetails = async () => {
@@ -56,6 +146,37 @@ export const EventDetailPage = () => {
       setError('Could not load event details.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadEventUpdates = async () => {
+    try {
+      setLoadingUpdates(true);
+      const res = await updatesApi.getEventUpdates(id);
+      setUpdatesList(res.data || []);
+    } catch (err) {
+      console.log('Error loading event updates:', err);
+    } finally {
+      setLoadingUpdates(false);
+    }
+  };
+
+  const handlePostUpdate = async (e) => {
+    e.preventDefault();
+    if (!newUpdateMessage.trim()) return;
+
+    try {
+      setPostingUpdate(true);
+      setUpdateSuccess('');
+      await updatesApi.postEventUpdate(id, newUpdateMessage.trim());
+      setNewUpdateMessage('');
+      setUpdateSuccess('Official announcement broadcasted to attendees!');
+      await loadEventUpdates();
+      setTimeout(() => setUpdateSuccess(''), 3500);
+    } catch (err) {
+      alert(err.response?.data?.detail || 'Failed to post announcement');
+    } finally {
+      setPostingUpdate(false);
     }
   };
 
@@ -280,16 +401,82 @@ export const EventDetailPage = () => {
                   <MapPin size={17} color="#F84464" />
                   <span>{event.location}</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+
+                {/* Live Seats availability line */}
+                <div style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  padding: '4px 8px',
+                  borderRadius: '6px',
+                  background: seatUpdateFlash ? 'rgba(248, 68, 100, 0.25)' : 'transparent',
+                  transition: 'background 0.3s ease',
+                  width: 'fit-content'
+                }}>
                   <Users size={17} color="#F84464" />
-                  <span>{event.available_seats} Seats Available / {event.total_seats} Total</span>
+                  <span style={{ fontWeight: '600' }}>
+                    {event.available_seats} Seats Available / {event.total_seats} Total
+                  </span>
+                  {isLiveConnected && (
+                    <span style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      background: 'rgba(16, 185, 129, 0.2)',
+                      color: '#10B981',
+                      fontSize: '11px',
+                      fontWeight: '700',
+                      padding: '2px 8px',
+                      borderRadius: '10px',
+                      marginLeft: '6px'
+                    }}>
+                      <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
+                      LIVE SYNC
+                    </span>
+                  )}
                 </div>
               </div>
 
-              <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
-                <span style={{ fontSize: '14px', color: '#94A3B8' }}>Ticket Price:</span>
-                <span style={{ fontSize: '28px', fontWeight: '800', color: '#ffffff' }}>₹{event.ticket_price}</span>
-                <span style={{ fontSize: '12px', color: '#10B981', fontWeight: '600' }}>• Instant QR Pass Included</span>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '10px' }}>
+                  <span style={{ fontSize: '14px', color: '#94A3B8' }}>Ticket Price:</span>
+                  <span style={{ fontSize: '28px', fontWeight: '800', color: '#ffffff' }}>₹{event.ticket_price}</span>
+                  <span style={{ fontSize: '12px', color: '#10B981', fontWeight: '600' }}>• Instant QR Pass</span>
+                </div>
+
+                {/* Wishlist Button */}
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!isAuthenticated) {
+                      navigate('/login');
+                      return;
+                    }
+                    await toggleWishlist(event.id);
+                  }}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    background: isWishlisted(event.id) ? '#FFF0F2' : 'rgba(255, 255, 255, 0.15)',
+                    color: isWishlisted(event.id) ? '#F84464' : '#ffffff',
+                    border: isWishlisted(event.id) ? '1px solid #FECDD3' : '1px solid rgba(255, 255, 255, 0.25)',
+                    padding: '8px 16px',
+                    borderRadius: '8px',
+                    fontWeight: '700',
+                    fontSize: '13px',
+                    cursor: 'pointer',
+                    backdropFilter: 'blur(6px)',
+                    transition: 'all 0.2s ease'
+                  }}
+                >
+                  <Heart
+                    size={16}
+                    fill={isWishlisted(event.id) ? '#F84464' : 'none'}
+                    color={isWishlisted(event.id) ? '#F84464' : '#ffffff'}
+                  />
+                  <span>{isWishlisted(event.id) ? 'Saved in Wishlist' : 'Save to Wishlist'}</span>
+                </button>
               </div>
             </div>
 
@@ -301,9 +488,147 @@ export const EventDetailPage = () => {
       <div className="container" style={{ marginTop: '32px' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', gap: '32px' }}>
           
-          {/* Left Column: Description & Reviews */}
+          {/* Left Column: Description, Live Announcements, & Reviews */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: '28px' }}>
             
+            {/* Live Announcements & Event Updates */}
+            <div className="bms-card" style={{ padding: '24px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '16px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    background: '#FEF3C7',
+                    color: '#B45309',
+                    padding: '6px',
+                    borderRadius: '8px',
+                    display: 'flex'
+                  }}>
+                    <Megaphone size={18} />
+                  </div>
+                  <div>
+                    <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#111827', margin: 0 }}>
+                      Live Event Announcements & Updates
+                    </h2>
+                    <span style={{ fontSize: '12px', color: '#6B7280' }}>
+                      Real-time notices and guidelines from event organizers
+                    </span>
+                  </div>
+                </div>
+
+                <span style={{
+                  fontSize: '11px',
+                  fontWeight: '700',
+                  color: '#059669',
+                  background: '#ECFDF5',
+                  padding: '3px 8px',
+                  borderRadius: '12px'
+                }}>
+                  {updatesList.length} {updatesList.length === 1 ? 'Notice' : 'Notices'}
+                </span>
+              </div>
+
+              {/* Organizer / Admin Post Form */}
+              {(isAdmin || isOrganizer) && (
+                <form
+                  onSubmit={handlePostUpdate}
+                  style={{
+                    background: '#F9FAFB',
+                    border: '1px solid #E5E7EB',
+                    borderRadius: '10px',
+                    padding: '14px',
+                    marginBottom: '18px'
+                  }}
+                >
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '6px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                    <Megaphone size={14} color="#F84464" /> Post an Official Announcement
+                  </div>
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <input
+                      type="text"
+                      className="input-field"
+                      placeholder="E.g. Entry gates open at 5:00 PM. Parking is available at Gate 3."
+                      value={newUpdateMessage}
+                      onChange={(e) => setNewUpdateMessage(e.target.value)}
+                      style={{ fontSize: '13px' }}
+                    />
+                    <button
+                      type="submit"
+                      disabled={postingUpdate || !newUpdateMessage.trim()}
+                      className="btn-primary"
+                      style={{
+                        padding: '8px 16px',
+                        fontSize: '13px',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '6px',
+                        flexShrink: 0
+                      }}
+                    >
+                      <Send size={14} />
+                      {postingUpdate ? 'Posting...' : 'Broadcast'}
+                    </button>
+                  </div>
+                  {updateSuccess && (
+                    <div style={{ color: '#059669', fontSize: '12px', fontWeight: '600', marginTop: '6px' }}>
+                      ✓ {updateSuccess}
+                    </div>
+                  )}
+                </form>
+              )}
+
+              {/* Updates List */}
+              {loadingUpdates ? (
+                <div style={{ textAlign: 'center', padding: '16px', color: '#6B7280', fontSize: '13px' }}>
+                  Checking for live announcements...
+                </div>
+              ) : updatesList.length === 0 ? (
+                <div style={{
+                  background: '#F9FAFB',
+                  border: '1px dashed #D1D5DB',
+                  borderRadius: '8px',
+                  padding: '20px',
+                  textAlign: 'center',
+                  color: '#6B7280',
+                  fontSize: '13px'
+                }}>
+                  No announcements yet. Check back closer to event day for gate and schedule updates!
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                  {updatesList.map((upd) => (
+                    <div
+                      key={upd.id}
+                      style={{
+                        padding: '12px 16px',
+                        borderRadius: '8px',
+                        borderLeft: '4px solid #F84464',
+                        background: '#FFF5F6',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '4px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '11px', fontWeight: '800', color: '#E11D48', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                          Official Announcement
+                        </span>
+                        <span style={{ fontSize: '11px', color: '#9CA3AF' }}>
+                          {new Date(upd.created_at).toLocaleString('en-IN', {
+                            day: 'numeric',
+                            month: 'short',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          })}
+                        </span>
+                      </div>
+                      <p style={{ margin: 0, fontSize: '13px', color: '#1F2937', lineHeight: '1.5' }}>
+                        {upd.message}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
             {/* About Event Card */}
             <div className="bms-card" style={{ padding: '24px' }}>
               <h2 style={{ fontSize: '18px', fontWeight: '700', color: '#111827', marginBottom: '14px' }}>
@@ -525,9 +850,50 @@ export const EventDetailPage = () => {
           {/* Right Column: Ticket Booking Box */}
           <div>
             <div className="bms-card" style={{ padding: '24px', position: 'sticky', top: '90px' }}>
-              <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#111827', marginBottom: '16px' }}>
-                Select Tickets
-              </h3>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                <h3 style={{ fontSize: '18px', fontWeight: '700', color: '#111827', margin: 0 }}>
+                  Select Tickets
+                </h3>
+                {isLiveConnected && (
+                  <span style={{ fontSize: '11px', color: '#10B981', fontWeight: '700', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                    <span style={{ width: 6, height: 6, borderRadius: '50%', background: '#10B981' }} />
+                    Live
+                  </span>
+                )}
+              </div>
+
+              {/* Live Inventory Status Banner */}
+              <div style={{
+                padding: '10px 14px',
+                borderRadius: '8px',
+                marginBottom: '16px',
+                background: isSoldOut ? '#FEE2E2' : event.available_seats <= 40 ? '#FEF3C7' : '#ECFDF5',
+                border: isSoldOut ? '1px solid #FECDD3' : event.available_seats <= 40 ? '1px solid #FDE68A' : '1px solid #A7F3D0',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                transition: 'all 0.3s ease'
+              }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{
+                    width: '8px',
+                    height: '8px',
+                    borderRadius: '50%',
+                    background: isSoldOut ? '#DC2626' : '#10B981',
+                    boxShadow: isSoldOut ? 'none' : '0 0 8px #10B981'
+                  }} />
+                  <span style={{
+                    fontSize: '12px',
+                    fontWeight: '700',
+                    color: isSoldOut ? '#991B1B' : event.available_seats <= 40 ? '#92400E' : '#065F46'
+                  }}>
+                    {isSoldOut ? 'SOLD OUT - No seats left' : `${event.available_seats} Tickets Available`}
+                  </span>
+                </div>
+                <span style={{ fontSize: '11px', color: '#6B7280', fontWeight: '500' }}>
+                  {event.available_seats <= 40 && !isSoldOut ? '🔥 Selling fast' : 'Live updates'}
+                </span>
+              </div>
 
               {/* Quantity Picker */}
               <div style={{

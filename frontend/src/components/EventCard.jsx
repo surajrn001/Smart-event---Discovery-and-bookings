@@ -1,8 +1,14 @@
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { Calendar, MapPin, Star, Flame, Sparkles } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Calendar, MapPin, Star, Flame, Sparkles, Heart } from 'lucide-react';
+import { useWishlist } from '../context/WishlistContext';
+import { useAuth } from '../context/AuthContext';
 
 export const EventCard = ({ event }) => {
+  const navigate = useNavigate();
+  const { isAuthenticated } = useAuth();
+  const { isWishlisted, toggleWishlist } = useWishlist();
+
   const formattedDate = new Date(event.event_date).toLocaleDateString('en-IN', {
     weekday: 'short',
     day: 'numeric',
@@ -12,14 +18,25 @@ export const EventCard = ({ event }) => {
 
   const isSoldOut = event.available_seats <= 0;
   const isFillingFast = !isSoldOut && event.available_seats <= 40;
+  const wishlisted = isWishlisted(event.id);
 
   // Rating representation
   const hasRating = event.average_rating && event.average_rating > 0;
   const ratingScore = hasRating ? Number(event.average_rating).toFixed(1) : null;
   const votesCount = event.total_reviews || 0;
 
+  const handleWishlistClick = async (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!isAuthenticated) {
+      navigate('/login');
+      return;
+    }
+    await toggleWishlist(event.id);
+  };
+
   return (
-    <div className="bms-card" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+    <div className="bms-card" style={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative' }}>
       {/* Event Poster Wrap */}
       <Link to={`/events/${event.id}`} style={{ position: 'relative', display: 'block' }}>
         <div className="bms-poster-wrap">
@@ -37,6 +54,46 @@ export const EventCard = ({ event }) => {
           <span className="bms-badge-category">
             {event.category}
           </span>
+
+          {/* Heart / Wishlist Button */}
+          <button
+            type="button"
+            onClick={handleWishlistClick}
+            aria-label={wishlisted ? 'Remove from wishlist' : 'Save to wishlist'}
+            title={wishlisted ? 'Saved in Wishlist' : 'Add to Wishlist'}
+            style={{
+              position: 'absolute',
+              top: '12px',
+              right: '12px',
+              width: '36px',
+              height: '36px',
+              borderRadius: '50%',
+              background: wishlisted ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.65)',
+              backdropFilter: 'blur(6px)',
+              border: wishlisted ? '1px solid #FECDD3' : '1px solid rgba(255, 255, 255, 0.2)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer',
+              transition: 'all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+              zIndex: 5,
+              boxShadow: '0 4px 10px rgba(0, 0, 0, 0.25)',
+              transform: wishlisted ? 'scale(1.05)' : 'scale(1)',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.transform = 'scale(1.15)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.transform = wishlisted ? 'scale(1.05)' : 'scale(1)';
+            }}
+          >
+            <Heart
+              size={18}
+              fill={wishlisted ? '#F84464' : 'none'}
+              color={wishlisted ? '#F84464' : '#ffffff'}
+              strokeWidth={wishlisted ? 2.5 : 2}
+            />
+          </button>
 
           {/* Rating Badge */}
           <div className="bms-badge-rating">

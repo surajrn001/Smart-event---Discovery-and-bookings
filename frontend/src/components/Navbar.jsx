@@ -16,12 +16,16 @@ import {
   Sparkles,
   CreditCard,
   CheckCircle,
-  AlertCircle
+  AlertCircle,
+  Heart,
+  User
 } from 'lucide-react';
+import { useWishlist } from '../context/WishlistContext';
 
 export const Navbar = () => {
   const { user, isAuthenticated, isOrganizer, isAdmin, logout } = useAuth();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { wishlistCount } = useWishlist();
   
   const [showNotifDropdown, setShowNotifDropdown] = useState(false);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -227,6 +231,49 @@ export const Navbar = () => {
                 </div>
               )}
             </div>
+
+            {/* Saved Wishlist Link */}
+            {isAuthenticated && (
+              <Link
+                to="/wishlist"
+                style={{
+                  position: 'relative',
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#CBD5E1',
+                  cursor: 'pointer',
+                  padding: '8px',
+                  borderRadius: '50%',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                title="Saved Events"
+              >
+                <Heart size={20} color={wishlistCount > 0 ? '#F84464' : '#CBD5E1'} fill={wishlistCount > 0 ? '#F84464' : 'none'} />
+                {wishlistCount > 0 && (
+                  <span style={{
+                    position: 'absolute',
+                    top: '2px',
+                    right: '2px',
+                    background: '#F84464',
+                    color: '#ffffff',
+                    fontSize: '10px',
+                    fontWeight: '700',
+                    borderRadius: '10px',
+                    minWidth: '18px',
+                    height: '18px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    padding: '0 4px',
+                    border: '2px solid #1F2533'
+                  }}>
+                    {wishlistCount}
+                  </span>
+                )}
+              </Link>
+            )}
 
             {/* Notifications Bell */}
             {isAuthenticated && (
@@ -482,6 +529,38 @@ export const Navbar = () => {
                     </div>
 
                     <Link
+                      to="/profile"
+                      onClick={() => setShowUserDropdown(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        color: '#374151',
+                        fontWeight: '500'
+                      }}
+                    >
+                      <User size={15} color="#10B981" /> My Profile & Summary
+                    </Link>
+
+                    <Link
+                      to="/wishlist"
+                      onClick={() => setShowUserDropdown(false)}
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '8px',
+                        padding: '10px 16px',
+                        fontSize: '13px',
+                        color: '#374151',
+                        fontWeight: '500'
+                      }}
+                    >
+                      <Heart size={15} color="#E11D48" /> Saved Events ({wishlistCount})
+                    </Link>
+
+                    <Link
                       to="/history"
                       onClick={() => setShowUserDropdown(false)}
                       style={{
@@ -625,9 +704,14 @@ export const Navbar = () => {
 
           <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
             {isAuthenticated && (
-              <Link to="/history" className="bms-sub-nav-item" style={{ color: '#F84464', fontWeight: '600' }}>
-                <Ticket size={14} /> My Passes
-              </Link>
+              <>
+                <Link to="/wishlist" className="bms-sub-nav-item" style={{ color: '#E11D48', fontWeight: '600' }}>
+                  <Heart size={14} /> Saved ({wishlistCount})
+                </Link>
+                <Link to="/history" className="bms-sub-nav-item" style={{ color: '#F84464', fontWeight: '600' }}>
+                  <Ticket size={14} /> My Passes
+                </Link>
+              </>
             )}
             <Link to="/notifications" className="bms-sub-nav-item" style={{ color: '#94A3B8' }}>
               Offers & Updates

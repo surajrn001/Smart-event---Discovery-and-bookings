@@ -79,6 +79,26 @@ export const AuthProvider = ({ children }) => {
     setToken(null);
   };
 
+  const updateUserData = (updatedFields) => {
+    setUser((prev) => {
+      const merged = { ...prev, ...updatedFields };
+      localStorage.setItem('smartevent_user', JSON.stringify(merged));
+      return merged;
+    });
+  };
+
+  const refreshUserProfile = async () => {
+    try {
+      const res = await authApi.getProfile();
+      if (res.data) {
+        localStorage.setItem('smartevent_user', JSON.stringify(res.data));
+        setUser(res.data);
+      }
+    } catch (e) {
+      console.log('Error refreshing profile:', e);
+    }
+  };
+
   return (
     <AuthContext.Provider
       value={{
@@ -92,6 +112,8 @@ export const AuthProvider = ({ children }) => {
         login,
         register,
         logout,
+        updateUserData,
+        refreshUserProfile,
       }}
     >
       {children}

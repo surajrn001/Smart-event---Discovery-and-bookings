@@ -39,6 +39,8 @@ export const authApi = {
   register: (data) => api.post('/auth/register', data),
   login: (data) => api.post('/auth/login', data),
   getProfile: () => api.get('/auth/profile'),
+  updateProfile: (data) => api.put('/auth/profile', data),
+  getActivitySummary: () => api.get('/auth/profile/summary'),
 };
 
 export const eventsApi = {
@@ -46,6 +48,29 @@ export const eventsApi = {
   getEventDetail: (id) => api.get(`/events/${id}`),
   getCategories: () => api.get('/events/meta/categories'),
   getCities: () => api.get('/events/meta/cities'),
+  getLiveSeats: (id) => api.get(`/events/${id}/live-seats`),
+};
+
+export const wishlistApi = {
+  getWishlist: () => api.get('/wishlist'),
+  getWishlistIds: () => api.get('/wishlist/ids'),
+  toggleWishlist: (eventId) => api.post(`/wishlist/${eventId}`),
+  removeFromWishlist: (eventId) => api.delete(`/wishlist/${eventId}`),
+};
+
+export const updatesApi = {
+  getEventUpdates: (eventId) => api.get(`/events/${eventId}/updates`),
+  postEventUpdate: (eventId, message) => api.post(`/events/${eventId}/updates`, { message }),
+};
+
+export const recommendationsApi = {
+  getRecommendations: (limit = 8) => api.get('/recommendations', { params: { limit } }),
+  getTrending: (limit = 8) => api.get('/recommendations/trending', { params: { limit } }),
+  recordView: (eventId) => api.post(`/recommendations/events/${eventId}/view`),
+};
+
+export const chatbotApi = {
+  sendMessage: (payload) => api.post('/chatbot/message', payload),
 };
 
 export const bookingsApi = {

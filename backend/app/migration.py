@@ -38,6 +38,18 @@ def run_db_migrations():
         if coupon_columns and "times_used" not in coupon_columns:
             cursor.execute("ALTER TABLE coupons ADD COLUMN times_used INTEGER DEFAULT 0")
 
+        # Check users columns for enhanced profile
+        cursor.execute("PRAGMA table_info(users)")
+        user_columns = [col[1] for col in cursor.fetchall()]
+        if "bio" not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN bio TEXT DEFAULT ''")
+        if "phone" not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN phone TEXT DEFAULT ''")
+        if "city" not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN city TEXT DEFAULT ''")
+        if "avatar_url" not in user_columns:
+            cursor.execute("ALTER TABLE users ADD COLUMN avatar_url TEXT DEFAULT ''")
+
         conn.commit()
     except Exception as e:
         print(f"Migration note: {e}")

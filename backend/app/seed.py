@@ -205,3 +205,24 @@ def seed_events_if_empty(db):
         db.commit()
         print(f"Added sample reviews for ratings discovery.")
 
+    # 5. Seed live event updates/announcements if missing
+    from app.models import EventUpdate
+    update_count = db.query(EventUpdate).count()
+    if update_count == 0:
+        all_events = db.query(Event).all()
+        sample_announcements = [
+            "Gates open 90 minutes before showtime. Priority contactless QR entry active at Gate 2.",
+            "Important advisory: Please have your digital QR pass ready on your smartphone for gate scanning.",
+            "Lineup schedule updated: Opening keynote begins at 10:00 AM. Refreshment stalls accept UPI and Cards.",
+            "Venue advisory: Designated visitor parking is situated at Zone C. Entry wristbands issued at gate."
+        ]
+        for idx, evt in enumerate(all_events):
+            ann = EventUpdate(
+                event_id=evt.id,
+                message=sample_announcements[idx % len(sample_announcements)],
+                created_at=datetime.utcnow() - timedelta(hours=(idx + 1) * 3)
+            )
+            db.add(ann)
+        db.commit()
+        print("Added sample live event announcements.")
+

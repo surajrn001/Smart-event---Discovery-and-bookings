@@ -8,11 +8,12 @@ from app.models import User, Event, Booking, Ticket, Notification, Coupon
 from app.schemas import BookingCreate, BookingResponse
 from app.dependencies import get_current_user
 from app.services_qr import generate_qr_code
+from app.websocket_manager import seat_manager
 
 router = APIRouter(prefix="/bookings", tags=["Bookings"])
 
 @router.post("", response_model=BookingResponse, status_code=status.HTTP_201_CREATED)
-def create_booking(
+async def create_booking(
     booking_in: BookingCreate,
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db)
@@ -108,6 +109,17 @@ def create_booking(
     # 8. Commit entire transaction
     db.commit()
     
+    # Broadcast live seat availability update to connected WebSocket clients
+    try:
+        await seat_manager.broadcast_seat_update(
+            event_id=event.id,
+            available_seats=event.available_seats,
+            total_seats=event.total_seats,
+            event_status=event.event_status
+        )
+    except Exception as e:
+        print(f"WebSocket broadcast notice: {e}")
+
     # Reload booking to guarantee all relationships (tickets, event) are fully loaded
     full_booking = (
         db.query(Booking)

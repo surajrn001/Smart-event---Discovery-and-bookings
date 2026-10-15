@@ -11,6 +11,10 @@ class User(Base):
     email = Column(String(100), nullable=False, unique=True, index=True)
     hashed_password = Column(String(255), nullable=False)
     role = Column(String(20), default="USER", nullable=False)  # USER, ORGANIZER, ADMIN
+    bio = Column(String(300), nullable=True)
+    phone = Column(String(20), nullable=True)
+    city = Column(String(100), nullable=True)
+    avatar_url = Column(String(500), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
@@ -18,6 +22,8 @@ class User(Base):
     bookings = relationship("Booking", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="user", cascade="all, delete-orphan")
+    wishlist_items = relationship("Wishlist", back_populates="user", cascade="all, delete-orphan")
+    event_views = relationship("EventView", back_populates="user", cascade="all, delete-orphan")
 
 class Event(Base):
     __tablename__ = "events"
@@ -40,6 +46,9 @@ class Event(Base):
     organizer = relationship("User", back_populates="events_organized")
     bookings = relationship("Booking", back_populates="event", cascade="all, delete-orphan")
     reviews = relationship("Review", back_populates="event", cascade="all, delete-orphan")
+    wishlist_items = relationship("Wishlist", back_populates="event", cascade="all, delete-orphan")
+    updates = relationship("EventUpdate", back_populates="event", cascade="all, delete-orphan")
+    views = relationship("EventView", back_populates="event", cascade="all, delete-orphan")
 
 class Coupon(Base):
     __tablename__ = "coupons"
@@ -134,4 +143,39 @@ class Notification(Base):
 
     # Relationships
     user = relationship("User", back_populates="notifications")
+
+class Wishlist(Base):
+    __tablename__ = "wishlist"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="wishlist_items")
+    event = relationship("Event", back_populates="wishlist_items")
+
+class EventUpdate(Base):
+    __tablename__ = "event_updates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    message = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    event = relationship("Event", back_populates="updates")
+
+class EventView(Base):
+    __tablename__ = "event_views"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    viewed_at = Column(DateTime, default=datetime.utcnow)
+
+    # Relationships
+    user = relationship("User", back_populates="event_views")
+    event = relationship("Event", back_populates="views")
 

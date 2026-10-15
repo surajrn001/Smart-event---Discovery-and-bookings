@@ -1,11 +1,16 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 import os
 
 from app.config import settings
 from app.database import engine, Base, SessionLocal
-from app.routers import auth, events, bookings, tickets, notifications, organizer, admin, payments, coupons, reviews
+from app.routers import (
+    auth, events, bookings, tickets, notifications,
+    organizer, admin, payments, coupons, reviews,
+    wishlist, recommendations, updates, chatbot
+)
+from app.websocket_manager import seat_manager
 from app.seed import seed_events_if_empty
 from app.migration import run_db_migrations
 
@@ -50,6 +55,24 @@ app.include_router(admin.router, prefix=settings.API_V1_STR)
 app.include_router(payments.router, prefix=settings.API_V1_STR)
 app.include_router(coupons.router, prefix=settings.API_V1_STR)
 app.include_router(reviews.router, prefix=settings.API_V1_STR)
+app.include_router(wishlist.router, prefix=settings.API_V1_STR)
+app.include_router(recommendations.router, prefix=settings.API_V1_STR)
+app.include_router(updates.router, prefix=settings.API_V1_STR)
+app.include_router(chatbot.router, prefix=settings.API_V1_STR)
+
+# Real-Time WebSocket for live seat availability broadcasts
+@app.websocket("/ws/events/{event_id}")
+async def websocket_event_seats(websocket: WebSocket, event_id: int):
+    await seat_manager.connect(event_id, websocket)
+    try:
+        while True:
+            data = await websocket.receive_text()
+            if data == "ping":
+                await websocket.send_text("pong")
+    except WebSocketDisconnect:
+        seat_manager.disconnect(event_id, websocket)
+    except Exception:
+        seat_manager.disconnect(event_id, websocket)
 
 
 @app.get("/")
